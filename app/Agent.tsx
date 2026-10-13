@@ -112,7 +112,7 @@ export default function Agent() {
         {openSafety.length > 0 && (
           <div className="banner alert" style={{ marginTop: 14 }}>
             <b>⚠ {openSafety.length} open safety case{openSafety.length > 1 ? "s" : ""}:</b>{" "}
-            {openSafety.map((o) => `${o.hotel} ${o.id}`).join(" · ")} – escalated to chief engineer and GM; only a GM can close them.
+            {openSafety.map((o) => `${o.hotel} ${o.id}`).join(" · ")} – urgent alert queued for the chief engineer and GM (simulated outbox); only a GM can close them.
           </div>
         )}
         {msg && <div className={`banner ${msg.ok ? "ok" : "alert"}`} style={{ marginTop: 10 }}>{msg.text}</div>}

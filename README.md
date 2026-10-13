@@ -12,7 +12,7 @@ CSV batch → collect (only unseen review ids; cross-posts linked) → remove co
   → AI: language, sentiment, categories, urgency, safety type, reply draft (one call per review)
   → keyword safety net (runs in parallel, can only ADD an escalation)
   → work order created or ADDED to an open one (AI-assisted matching), routed from the Routing sheet
-  → safety? P1 + immediate e-mail to chief engineer and GM
+  → safety? P1 + urgent alert to chief engineer and GM (simulated outbox in this demo)
   → reply draft waits in the GM queue → GM approves / edits / rejects → released (simulated outbox)
   → weekly summary per hotel (plain calculation, no AI)
   every step → action log in plain English

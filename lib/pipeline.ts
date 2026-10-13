@@ -26,7 +26,7 @@ async function loadWithEtag(): Promise<{ st: State; etag?: string }> {
 export async function loadState(): Promise<State> {
   return (await loadWithEtag()).st;
 }
-export async function saveState(st: State, etag?: string) {
+export async function saveState(st: State, etag?: string | null) {
   st.log = st.log.slice(-5000);
   await writeStored(STATE_FILE, JSON.stringify(st), "application/json", etag);
 }
@@ -41,7 +41,7 @@ export async function withState<T>(fn: (st: State) => Promise<T> | T): Promise<T
     const { st, etag } = await loadWithEtag();
     const out = await fn(st);
     try {
-      await saveState(st, etag);
+      await saveState(st, etag ?? null); // no file yet = only write if still no file
       return out;
     } catch (e) {
       if (!(e instanceof ConflictError)) throw e;
@@ -182,7 +182,7 @@ function escalate(st: State, wo: WorkOrder, rev: Review, r: Record<string, Route
     body: `A guest review reports a possible safety issue at ${wo.hotel}.\n\n${wo.summary.join("\n")}\n\nWhy this was escalated: ${why}\n\nPlease check immediately. This case can only be closed by a person (GM confirmation with a note); the agent will never close it.\nReview ${rev.id}: "${rev.title}"`,
     related: wo.id,
   });
-  log(st, { review: rev.id, workOrder: wo.id, text: `SAFETY ESCALATION ${wo.id} at ${wo.hotel}: e-mail sent immediately to chief engineer (${row.engineer}) and GM (${row.gm}). Reason: ${why}` });
+  log(st, { review: rev.id, workOrder: wo.id, text: `SAFETY ESCALATION ${wo.id} at ${wo.hotel}: urgent alert queued in the (simulated) outbox for chief engineer (${row.engineer}) and GM (${row.gm}). Reason: ${why}` });
 }
 
 export async function applyAnalysis(st: State, rev: Review, a: Analysis, r: Record<string, RouteRow>) {

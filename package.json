@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "test": "node --test tests/pipeline.test.ts",
+    "test": "node --test tests/pipeline.test.ts tests/concurrency.test.ts",
     "eval": "node --env-file=.env.local scripts/eval.ts",
     "smoke": "node --env-file=.env.local scripts/smoke.ts"
   },
