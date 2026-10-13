@@ -187,7 +187,7 @@ export default function Agent() {
           )}
           {tab === "overview" && <Overview counts={counts} pending={pending.length} openOrders={openOrders.length} openSafety={openSafety} st={stS} reviews={rv} setTab={setTab} />}
           {tab === "approvals" && <Approvals items={pending} actor={actor} me={me} act={act} post={post} routing={api.routing} done={rv.filter((r) => r.draft && r.draft.status !== "pending")} />}
-          {tab === "orders" && <Orders orders={ord} actor={actor} act={act} post={post} routing={api.routing} />}
+          {tab === "orders" && <Orders orders={ord} actor={actor} act={act} post={post} routing={api.routing} scope={Object.keys(routingS)} />}
           {tab === "reviews" && <Reviews reviews={rv} />}
           {tab === "outbox" && <Outbox items={outboxS} />}
           {tab === "log" && <Log st={stS} />}
@@ -273,14 +273,14 @@ function Approvals({ items, actor, me, act, post, routing, done }: { items: Revi
   );
 }
 
-function Orders({ orders, actor, act, post, routing }: { orders: WorkOrder[]; actor: string; act: (f: () => Promise<unknown>) => void; post: (u: string, b: unknown) => Promise<unknown>; routing: Api["routing"] }) {
+function Orders({ orders, actor, act, post, routing, scope }: { orders: WorkOrder[]; actor: string; act: (f: () => Promise<unknown>) => void; post: (u: string, b: unknown) => Promise<unknown>; routing: Api["routing"]; scope: string[] }) {
   const [show, setShow] = useState<"open" | "all">("open");
   const list = orders.filter((o) => show === "all" || o.status !== "closed");
   return (
     <div className="card">
       <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
         <h2>Work orders</h2>
-        <div className="seg"><button className={show === "open" ? "on" : ""} onClick={() => setShow("open")}>Open</button><button className={show === "all" ? "on" : ""} onClick={() => setShow("all")}>All</button></div>
+        <div style={{ display: "flex", gap: 8 }}><a className="btn" href={`/api/export?hotels=${scope.length < 12 ? scope.join(",") : ""}${show === "all" ? "&all=1" : ""}`} title="Download the list as an Excel file (open orders, or all if “All” is selected)">⬇ Export to Excel</a><div className="seg"><button className={show === "open" ? "on" : ""} onClick={() => setShow("open")}>Open</button><button className={show === "all" ? "on" : ""} onClick={() => setShow("all")}>All</button></div></div>
       </div>
       <div className="sub">Repeated reports of the same problem at the same hotel are grouped into one work order (see “reports”). The agent never closes anything.</div>
       <div className="scroll">
@@ -455,7 +455,7 @@ function Quality({ api }: { api: Api }) {
     <div className="grid">
       <div className="card">
         <h2>Classification quality</h2>
-        <div className="sub">Measured on all 100 sample reviews against labels written by hand (data/gold.txt). Run again with <code>npm run eval</code>.</div>
+        <div className="sub">Measured on all 100 sample reviews against reference labels (data/gold.txt) drafted with an AI assistant and not yet reviewed by a hotel specialist. Run again with <code>npm run eval</code>.</div>
         {api.evalSummary ? <EvalTable lines={api.evalSummary.lines} /> : <p className="small">No evaluation file yet.</p>}
       </div>
       <div className="card">

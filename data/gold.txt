@@ -1,4 +1,4 @@
-# Hand-labelled reference set (labels written by reading each review; to be reviewed by a hotel-operations person).
+# Reference set drafted with an AI assistant by reading each review; NOT yet reviewed by a hotel-operations person.
 # id | language | sentiment | complaint categories (comma separated, empty = none) | safety (1/0) | spam (1/0) | duplicate_of
 # Category codes: HVAC WATER ELEC LIFT IT BLDG HK FB SVC OTH
 RV-0001|lt|mixed|HVAC,SVC|0|0|

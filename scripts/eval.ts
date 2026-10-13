@@ -1,4 +1,4 @@
-// Measures classification quality against the hand-labelled set in data/gold.txt.
+// Measures classification quality against the AI-drafted reference set in data/gold.txt.
 // Usage: node --env-file=.env.local scripts/eval.ts            (OPENAI_MODEL=... to compare models)
 import { readFileSync, writeFileSync } from "node:fs";
 import { collect, processQueued } from "../lib/pipeline.ts";

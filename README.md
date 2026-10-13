@@ -36,7 +36,7 @@ Retention proposal: 90 days for review text, work orders and log kept longer. Th
 Escalate if the model **or** a multilingual keyword check says: electrical hazard, smoke / fire alarm, person trapped or lift stuck, water leak / flooding. Cigarette-smoke smell, mold, a broken socket without sparks or a lift merely out of order are not escalated.
 
 ## Quality, measured
-`npm run eval` runs all 100 sample reviews and compares them with labels I wrote by hand (`data/gold.txt`). Results and the full list of disagreements are in `eval-gpt-4.1-mini.md`. Honest caveats: the reference labels are mine (should be reviewed by hotel operations), the safety rules for "lift stuck" were tightened after the first run on the same data, and "Front office / Service" is the least consistent category in both the labels and the model.
+`npm run eval` runs all 100 sample reviews and compares them with reference labels (`data/gold.txt`) that were drafted with an AI assistant and have not yet been reviewed by a hotel specialist. Results and the full list of disagreements are in `eval-gpt-4.1-mini.md`. Honest caveats: the reference labels were drafted with an AI assistant (they should be reviewed by hotel operations), the safety rules for "lift stuck" were tightened after the first run on the same data, and "Front office / Service" is the least consistent category in both the labels and the model.
 
 ## Cost
 Measured: about **$0.08 per 100 reviews** with gpt-4.1-mini (assumed price $0.40 / $1.60 per million tokens; check current pricing, change with `OPENAI_MODEL`, `LLM_PRICE_IN`, `LLM_PRICE_OUT`). For 18 hotels, assuming about 60 reviews per hotel per month (~1,100 reviews): roughly **$1 per month** AI cost; Vercel and Blob are within free tiers at this size.
