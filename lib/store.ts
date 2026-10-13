@@ -22,7 +22,7 @@ export async function readStored(name: string): Promise<Stored | null> {
     const res = await get(name, { access: "private", useCache: false });
     if (!res || res.statusCode !== 200) return null;
     const buf = Buffer.from(await new Response(res.stream).arrayBuffer());
-    return { buf, updatedAt: new Date(res.blob.uploadedAt), etag: res.blob.etag };
+    return { buf, updatedAt: new Date(res.blob.uploadedAt), etag: res.blob.etag.replace(/^W\//, "") };
   }
   try {
     const p = path.join(localDir, name);
