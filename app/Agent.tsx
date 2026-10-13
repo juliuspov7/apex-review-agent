@@ -139,6 +139,11 @@ export default function Agent() {
               e.target.value = "";
             }} />
           </label>
+          <button className="btn" disabled={!!busy} title="Admin only: deletes all reviews, work orders, drafts and the log so the demo can be run again" onClick={() => {
+            const password = prompt("Reset ALL agent data (reviews, work orders, drafts, log)?\nEnter the admin password to confirm:");
+            if (!password) return;
+            act(async () => { await post("/api/reset", { password }); setMsg({ ok: true, text: "All agent data was reset. Load batch_01.csv to start again." }); });
+          }}>⟲ Reset demo</button>
           <span className="small">Only review ids not seen before are analysed – re-loading a file never creates double work.</span>
         </div>
 
