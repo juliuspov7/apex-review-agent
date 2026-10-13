@@ -1,66 +1,124 @@
 # Apex guest review agent (Task 3)
 
-Collects guest reviews, classifies them with an AI model, turns technical complaints into routed work orders, drafts replies in the guest's language and releases them only after the hotel GM approves. Anonymised / synthetic assignment data: keep this repository private.
+A web application that reads guest reviews, understands them with an AI model, creates work orders for technical problems, drafts replies in the guest's language, and releases a reply only after the hotel's general manager (GM) approves it.
 
-Live demo: https://apex-review-agent.vercel.app (view password supplied separately).
+- **Live:** https://apex-review-agent.vercel.app (view password is sent separately)
+- The data is synthetic assignment data. Keep this repository private.
+- E-mails, Teams messages and public replies are **simulated** in this demo (see the Outbox tab). Nothing is sent to real people.
 
-## Design choice: fixed workflow with AI steps, not a free-roaming agent
-The steps are always the same, so the order, the permissions and the safety rules live in plain code. The model is used only where language understanding is needed (classify + draft reply, and "is this the same fault as an open work order?"). Every model answer is validated against a strict schema before anything acts on it. The model cannot send, close or delete anything.
+## How it works
+
+The steps are always the same, so the order, permissions and safety rules are plain code. The AI model is used only for language work: classifying a review, drafting the reply, and deciding whether two complaints describe the same fault. Every model answer is checked against a strict format before anything acts on it. The model cannot send, close or delete anything.
 
 ```
-CSV batch → collect (only unseen review ids; cross-posts linked) → remove contact data
-  → AI: language, sentiment, categories, urgency, safety type, reply draft (one call per review)
-  → keyword safety net (runs in parallel, can only ADD an escalation)
-  → work order created or ADDED to an open one (AI-assisted matching), routed from the Routing sheet
-  → safety? P1 + urgent alert to chief engineer and GM (simulated outbox in this demo)
-  → reply draft waits in the GM queue → GM approves / edits / rejects → released (simulated outbox)
-  → weekly summary per hotel (plain calculation, no AI)
-  every step → action log in plain English
+CSV file ──► collect (only review ids not seen before; cross-posted duplicates are linked)
+         ──► remove contact data from the text
+         ──► AI: language, sentiment, categories, urgency, safety type, reply draft
+         ──► keyword safety check (runs separately, can only add an escalation)
+         ──► work order created, or added to an open one for the same fault; routed to the right person
+         ──► safety case? priority P1 and an urgent alert to chief engineer and GM
+         ──► reply draft waits in the GM's list ──► GM approves, edits or rejects ──► released
+every step is written to the action log in plain English
 ```
 
-## Human in the loop
-- No reply is released without the approval of **that hotel's GM**. The server checks the approver against the Routing sheet, but in this demo the identity itself is **simulated**: the "Acting as" selector sends the e-mail from the browser, so anyone who can reach the app could claim to be a GM. It is a demonstration of the permission model, not authentication.
-- Safety work orders can only be closed by the GM and need a note. The agent never closes anything.
-- In a real roll-out the identity comes from Microsoft Entra sign-in and is read from the verified token on the server (groups: GM per hotel, chief engineer per hotel, HQ read-only); the client never states who it is.
+## Who may do what
+
+- A reply is released only when **the GM of that hotel** approves it. The server checks this against the routing table.
+- A safety work order can be closed only by the GM, and only with a note of what was checked or repaired.
+- The agent never closes anything.
+- **The identity in this demo is simulated.** The “Acting as” selector sends the e-mail address from the browser, so it shows the permission model but is not real sign-in. In production the identity would come from Microsoft Entra ID, verified on the server.
+- A hotel user sees only that hotel's reviews, work orders, replies, outbox and log. HQ sees all hotels.
 
 ## Personal data
-| Data | Model | Work order | Stored |
+
+| Data | Sent to the AI | In work orders | Stored |
 |---|---|---|---|
-| Phone, e-mail, booking number | never sent (removed first) | no | removed before storing |
-| Room number | masked as `[ROOM]` | yes (engineer needs it) | yes |
-| Reviewer name | first name only (public on the review site), so the greeting is grammatically correct (e.g. Lithuanian vocative) | no | yes |
-| Review text | yes, after removal | summary only | yes |
-Retention proposal: 90 days for review text, work orders and log kept longer. The API key stays on the server.
+| Phone, e-mail, booking number | Never (removed first) | No | Removed before storing |
+| Room number | Hidden as `[ROOM]` | Yes (engineers need it) | Yes |
+| Reviewer first name | Yes, so the greeting has the correct grammar (for example the Lithuanian vocative) | No | Yes |
+| Review text | After the removals above | A one-line summary | Yes |
+
+Proposed retention: review text 90 days; the log longer. The OpenAI key stays on the server.
 
 ## Safety escalation
-Escalate if the model **or** a multilingual keyword check says: electrical hazard, smoke / fire alarm, person trapped or lift stuck, water leak / flooding. Cigarette-smoke smell, mold, a broken socket without sparks or a lift merely out of order are not escalated.
 
-## Quality, measured
-`npm run eval` runs all 100 sample reviews and compares them with reference labels (`data/gold.txt`) that were drafted with an AI assistant and have not yet been reviewed by a hotel specialist. Results and the full list of disagreements are in `eval-gpt-4.1-mini.md`. Honest caveats: the reference labels were drafted with an AI assistant (they should be reviewed by hotel operations), the safety rules for "lift stuck" were tightened after the first run on the same data, and "Front office / Service" is the least consistent category in both the labels and the model.
+A case is escalated if **either the model or the keyword check** reports electrical danger, smoke or a fire-alarm problem, a person trapped or a lift stuck, or a water leak or flooding. The keyword check works in several languages and can only add escalations, never remove them. A smell of cigarette smoke, mold, a broken socket without sparks or a lift that is merely out of order are not escalated. The alerts say “possible …” because the guest report is not verified.
 
-## Cost
-Measured: about **$0.08 per 100 reviews** with gpt-4.1-mini (assumed price $0.40 / $1.60 per million tokens; check current pricing, change with `OPENAI_MODEL`, `LLM_PRICE_IN`, `LLM_PRICE_OUT`). For 18 hotels, assuming about 60 reviews per hotel per month (~1,100 reviews): roughly **$1 per month** AI cost; Vercel and Blob are within free tiers at this size.
+## Where things are
 
-## Run
+| File | What it does |
+|---|---|
+| `app/Agent.tsx` | The whole screen: Overview, Approvals, Work orders, Reviews, Outbox, Action log, Weekly, Quality & cost. |
+| `app/page.tsx`, `app/layout.tsx`, `app/globals.css` | Page shell and styling. |
+| `app/login/page.tsx`, `app/api/login/route.ts`, `proxy.ts`, `lib/gate.ts` | The password gate. |
+| `app/api/state/route.ts` | Returns everything the screen needs. |
+| `app/api/run/route.ts` | Loads a batch file and processes the queue. |
+| `app/api/upload/route.ts` | Accepts a new reviews CSV. |
+| `app/api/draft/route.ts` | A GM approves or rejects a reply. |
+| `app/api/wo/route.ts` | Start or close a work order. |
+| `app/api/weekly/route.ts` | Queues the weekly summaries for the GMs. |
+| `app/api/export/route.ts` | Downloads the work orders as an Excel file. |
+| `app/api/reset/route.ts` | Demo helper: deletes all agent data. Needs `ADMIN_PASSWORD`. |
+| `lib/pipeline.ts` | **The workflow:** collecting, analysis results, work orders and grouping, escalation, approvals, closing rules, safe saving of the state. |
+| `lib/llm.ts` | The AI request: instructions, the required answer format, and the check of the answer. |
+| `lib/match.ts` | The AI question “is this the same fault as an open work order?”. |
+| `lib/safety.ts` | The keyword safety check. |
+| `lib/pii.ts` | Removal of personal data before storing and before the AI. |
+| `lib/csv.ts` | Reads the reviews CSV. |
+| `lib/weekly.ts` | Weekly summary figures (calculated, not written by AI). |
+| `lib/store.ts` | Storage: private Vercel Blob, or a local folder. Writes are checked so two actions at the same time do not overwrite each other. |
+| `lib/types.ts` | Shared types and the category list. |
+| `data/batch_01.csv`, `data/batch_02.csv` | The sample reviews (80 and 20). |
+| `data/routing.json` | Who is GM, chief engineer and housekeeping for each hotel (from the Routing sheet). |
+| `data/gold.txt` | Reference labels for measuring quality. Drafted with an AI assistant, **not yet reviewed by a hotel specialist**. |
+| `data/eval.json`, `eval-gpt-4.1-mini.md` | The latest quality results, shown in the app and as a full report. |
+| `scripts/eval.ts` | Runs all sample reviews and compares them with the reference labels (`npm run eval`). |
+| `scripts/greetings.ts` | Prints the greeting line of every drafted reply, to check name grammar by eye. |
+| `scripts/smoke.ts` | Quick run on a few reviews. |
+| `tests/pipeline.test.ts`, `tests/concurrency.test.ts` | Unit tests: personal data, safety, approval rights, grouping, duplicates, and parallel actions. |
+| `.github/workflows/test.yml` | Type check and tests on every push. |
+
+## Quality and cost
+
+`npm run eval` processes the 100 sample reviews and compares them with the reference labels. Latest run (`eval-gpt-4.1-mini.md`): language 100 %, sentiment 88 % exactly right (no positive/negative flips), category sets 80 % exactly right, safety cases 11 of 11 found with no false alarms, spam and the cross-posted duplicate found. Results vary a little from run to run.
+
+Caveats: the reference labels were drafted with an AI assistant, and the lift rule was tightened after seeing the results on the same data, so the safety figure is optimistic. The mixed “Front office / Service” category is the least consistent.
+
+Cost: about **$0.09 per 100 reviews** with gpt-4.1-mini (assumed price $0.40 / $1.60 per million tokens; check current pricing). For 18 hotels with an assumed 60 reviews per hotel per month, about $1 per month. Hosting is free at demo size.
+
+## Settings (environment variables)
+
+| Name | Purpose |
+|---|---|
+| `OPENAI_API_KEY` | Access to the AI model. |
+| `OPENAI_MODEL`, `LLM_PRICE_IN`, `LLM_PRICE_OUT` | Optional: another model and its price per million tokens. |
+| `DASH_PASSWORD` | Password to open the app. Not set = no password (local use). |
+| `ADMIN_PASSWORD` | Password for the Reset button. |
+| `BLOB_READ_WRITE_TOKEN` | Set by connecting a **private** Vercel Blob store. Without it, data is kept in `.local-store/`. |
+
+## Run it yourself
+
 ```
 npm install
-# .env.local: OPENAI_API_KEY=...  ADMIN_PASSWORD=...  (DASH_PASSWORD optional: view gate)
+# create .env.local with OPENAI_API_KEY=...  and  ADMIN_PASSWORD=...
 npm run dev        # http://localhost:3000
-npm test           # unit tests, no network
-npm run eval       # quality + cost on the 100 sample reviews (needs the API key)
+npm test           # unit tests, no network needed
+npm run eval       # quality and cost on the 100 sample reviews (needs the key)
 ```
-Env vars on Vercel: `OPENAI_API_KEY`, `DASH_PASSWORD`, `ADMIN_PASSWORD` (reset button), `BLOB_READ_WRITE_TOKEN` (private Blob store holds `agent/state.json`).
 
-## Demo script
-1. Reset (admin password), load `batch_01.csv` → 80 reviews analysed in about 25 s.
-2. Overview / Approvals / Work orders: safety banner, grouped work orders, drafts in six languages.
-3. Acting as `gm.h01@apex-test.example` → approve a reply → Outbox shows the released text.
-4. Load `batch_02.csv` → only the 20 new reviews are processed; one duplicate, one spam, repeat lift reports are added to existing work orders, new safety cases escalate.
-5. Quality & cost tab, Action log, Weekly tab.
+## Demo steps
 
-## Known limitations
-- E-mails, Teams and public replies are simulated (outbox); connecting Graph / SMTP / platform APIs is the next step.
-- State is one JSON document in Blob. Writes use an ETag check (optimistic locking) and are retried on conflict, so an approval made while a batch is being processed is not lost. This is fine for hundreds of reviews; a database (Postgres) is the next step for thousands and for several simultaneous approvers.
-- Reviews are loaded from files; a scheduled import from the platforms' APIs is not built.
-- Language support depends on the model; replies in rarer languages should be checked by the GM (fallback English).
-- If a guest mentions an earlier stay, the work order gets a "please verify" note; it is never suppressed.
+1. Press **Reset demo** (admin password), then **Load batch_01.csv**. About 80 reviews are analysed in under a minute.
+2. Look at Overview, Approvals and Work orders: safety cases, grouped work orders, drafts in six languages.
+3. Choose “Acting as” a GM (for example `gm.h01@apex-test.example`) and approve a reply. It appears in the Outbox.
+4. Press **Load batch_02.csv**. Only the 20 new reviews are processed: one duplicate, one spam, repeat reports added to existing work orders, new safety cases escalated.
+5. Open Weekly, Action log and Quality & cost.
+
+## Limitations
+
+- E-mails, Teams and public replies are simulated. Connecting Microsoft Graph, SMTP or the review platforms' APIs is the next step.
+- The identity is simulated (see above).
+- Reviews are loaded from files. A scheduled import from Booking, Google and TripAdvisor is not built.
+- All data is one JSON file in storage, protected against overwriting by a version check. This is fine for hundreds of reviews. PostgreSQL would be the next step for thousands of reviews and several approvers.
+- Replies in less common languages should be checked by the GM; the fallback is English. Greetings have not been checked by native speakers.
+- If a guest mentions an earlier stay, the work order gets a “please verify” note. It is never suppressed.
