@@ -65,7 +65,7 @@ export default function Agent() {
 
   async function act(fn: () => Promise<unknown>) {
     setMsg(null);
-    try { await fn(); } catch (e) { setMsg({ ok: false, text: (e as Error).message }); }
+    try { await fn(); } catch (e) { setMsg({ ok: false, text: (e as Error).message }); window.scrollTo({ top: 0, behavior: "smooth" }); }
     load();
   }
 
@@ -272,8 +272,15 @@ function Orders({ orders, actor, act, post, routing }: { orders: WorkOrder[]; ac
                   <td style={{ whiteSpace: "nowrap" }}>
                     {o.status === "open" && <button className="btn" disabled={!may} onClick={() => act(() => post("/api/wo", { id: o.id, action: "start", actor }))}>Start</button>}{" "}
                     {o.status !== "closed" && <button className="btn" disabled={!may} onClick={() => {
-                      const note = o.safety ? prompt("Safety case – what was checked or repaired? (GM confirmation)") : "";
-                      if (o.safety && !note) return;
+                      let note: string | null = "";
+                      if (o.safety) {
+                        note = prompt("Safety case – what was checked or repaired? (GM confirmation, min. 10 characters)");
+                        if (note === null) return; // cancelled
+                        if (note.trim().length < 10) {
+                          alert("A safety case cannot be closed without a note (at least 10 characters) describing what was checked or repaired. The case stays open.");
+                          return;
+                        }
+                      }
                       act(() => post("/api/wo", { id: o.id, action: "close", actor, note }));
                     }}>Close</button>}
                   </td>
