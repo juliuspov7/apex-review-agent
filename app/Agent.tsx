@@ -391,7 +391,7 @@ function Weekly({ api, act, post, setMsg }: { api: Api; act: (f: () => Promise<u
       </div>
       {!week && <p className="small">No reviews loaded yet.</p>}
       <div className="scroll"><table>
-        <thead><tr><th>Hotel</th><th className="n">Reviews</th><th className="n">Avg rating</th><th>Trend</th><th>Top issues</th><th className="n">Open WOs</th><th className="n">Safety</th><th className="n">Replies pending</th></tr></thead>
+        <thead><tr><th>Hotel</th><th className="n">Reviews</th><th className="n">Avg rating</th><th>Trend</th><th>Top issues</th><th className="n" title="All work orders that are open today, whichever week they were created">Open WOs (all weeks, now)</th><th className="n" title="Open safety cases today">Safety open (now)</th><th className="n" title="Drafted replies still waiting for approval, for this week's reviews">Replies pending (this week)</th></tr></thead>
         <tbody>{rows.map((r) => (
           <tr key={r.hotel} title={weeklyText(r, week)}>
             <td><b>{r.hotel}</b></td><td className="n">{r.reviews}</td><td className="n">{r.avgRating ?? "–"}</td>
@@ -401,7 +401,7 @@ function Weekly({ api, act, post, setMsg }: { api: Api; act: (f: () => Promise<u
           </tr>
         ))}</tbody>
       </table></div>
-      <p className="small">Calculated from the stored data (no AI involved, so no invented numbers). Ratings are normalised to 1–5 (Booking 1–10 ÷ 2). Hover a row for the e-mail text.</p>
+      <p className="small"><b>Reviews, rating, trend, top issues and pending replies are for the selected week. Open work orders and safety cases are the position today (all weeks), because they stay open until someone closes them.</b> Calculated from the stored data (no AI involved, so no invented numbers). Ratings are normalised to 1–5 (Booking 1–10 ÷ 2). Hover a row for the e-mail text.</p>
     </div>
   );
 }
