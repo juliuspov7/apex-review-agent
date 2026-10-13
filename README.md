@@ -28,7 +28,7 @@ CSV batch → collect (only unseen review ids; cross-posts linked) → remove co
 |---|---|---|---|
 | Phone, e-mail, booking number | never sent (removed first) | no | removed before storing |
 | Room number | masked as `[ROOM]` | yes (engineer needs it) | yes |
-| Reviewer name | never sent (reply uses `{{GUEST}}`, filled in when shown) | no | yes (public on the review platform) |
+| Reviewer name | first name only (public on the review site), so the greeting is grammatically correct (e.g. Lithuanian vocative) | no | yes |
 | Review text | yes, after removal | summary only | yes |
 Retention proposal: 90 days for review text, work orders and log kept longer. The API key stays on the server.
 

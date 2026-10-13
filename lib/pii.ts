@@ -2,7 +2,7 @@
  * Personal-data handling, done in plain code BEFORE any text reaches the model or is stored:
  *  - phone numbers, e-mail addresses, booking numbers/references are removed from the stored text and from model input
  *  - room numbers are extracted (needed by the engineer) and replaced by [ROOM] in model input
- *  - the reviewer's name is never sent to the model (the reply uses a {{GUEST}} placeholder filled in at display time)
+ *  - only the reviewer's FIRST name (public on the review site) is sent to the model, so the greeting is grammatically correct (e.g. Lithuanian vocative)
  */
 export interface Scrubbed {
   stored: string; // contact data removed, room numbers kept (shown to GM / engineer)

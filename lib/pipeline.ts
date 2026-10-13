@@ -255,7 +255,7 @@ export async function analyseQueue(st: State, limit = 30, concurrency = 6) {
     while (i < queue.length) {
       const rev = queue[i++];
       const net = safetyNet(rev.text);
-      try { results.set(rev.id, { net, res: await analyse(scrub(`${rev.title}\n${rev.text}`).forModel) }); }
+      try { results.set(rev.id, { net, res: await analyse(scrub(`${rev.title}\n${rev.text}`).forModel, guestName(rev)) }); }
       catch (e) { results.set(rev.id, { net, err: e as Error }); }
     }
   }

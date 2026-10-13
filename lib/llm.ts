@@ -28,7 +28,7 @@ A guest who also says nobody reacted may add a "Front office / Service" issue on
 Each issue: summary = one short English sentence without personal data; urgency = low | medium | high | critical.
 SAFETY_TYPE per issue (strict): "electrical" = electric shock, sparking, exposed or loose cables, burning smell from sockets; "smoke_fire" = smoke, fire, fire-alarm activation or malfunction; "lift_trapped" = people trapped, or a lift that got stuck/blocked or stopped between floors (even if the guest does not say whether anyone was inside – err on the side of escalating); "water_leak" = active water leak/flooding from ceiling, pipes or toilet; otherwise "none". A broken socket without sparks, a smell of cigarette smoke, mold, a slow drain or an out-of-order lift without trapped people are NOT safety-critical ("none"). Any safety-critical issue has urgency "critical".
 
-DRAFT_REPLY: a reply to the guest, in the SAME language as the review, 50-110 words, warm and professional, starting with "{{GUEST}}" placeholder greeting (e.g. "Dear {{GUEST}},"). Thank them; acknowledge the specific problems concretely; say the matter has been passed to the right team; for safety issues say it is being treated as an urgent priority. NEVER promise compensation, refunds or specific fix times, never admit legal liability, never include phone numbers, e-mails or booking numbers, never invent facts, never blame the guest. For positive reviews thank them and invite them back. If the review is spam, set draft_reply to null.
+DRAFT_REPLY: a reply to the guest, in the SAME language as the review, 50-110 words, warm and professional, starting with a greeting. The user message gives the guest's FIRST NAME (public on the review site). Address the guest by it in the grammatically correct form of the reply language, including case and gender agreement: e.g. Lithuanian vocative with matching gender ("Gerbiama Ieva,", "Gerbiamas Tomai,", "Gerbiama Rasa,"), Polish ("Szanowny Panie Marku,", "Szanowna Pani Katarzyno,"), Latvian/Estonian vocative or nominative as correct, Romanian ("Stimată Elena,", "Stimate Andrei,"), German ("Liebe Frau ..." is NOT allowed without a surname, use "Guten Tag Klaus,"), Italian ("Gentile Giulia,"), English ("Dear Anna,"). Lithuanian vocative endings: -as→-ai (Tomas→Tomai, Mantas→Mantai), -is→-i, -ys→-y, -us→-au (Darius→Dariau), feminine -ė→-e (Eglė→Egle, Gintarė→Gintare), feminine -a/-ia unchanged (Rasa, Ieva, Monika, Laima). If you are not sure of the gender or the correct form of the name, use a neutral greeting WITHOUT the name (Lithuanian "Sveiki,", Polish "Dzień dobry,", Romanian "Bună ziua,", German "Guten Tag,", Italian "Buongiorno,", English "Hello,"). Never use a grammatically wrong form such as a nominative name after "Gerbiamas" for a woman. Thank them; acknowledge the specific problems concretely; say the matter has been passed to the right team; for safety issues say it is being treated as an urgent priority. NEVER promise compensation, refunds or specific fix times, never admit legal liability, never include phone numbers, e-mails or booking numbers, never invent facts, never blame the guest. For positive reviews thank them and invite them back. If the review is spam, set draft_reply to null.
 Use the language of the review; if you cannot write it well, use English.
 
 REASON: 1-2 plain English sentences for a non-technical manager explaining what you decided and why.`;
@@ -100,7 +100,7 @@ export function validate(x: unknown): LlmResult["analysis"] {
   };
 }
 
-async function call(text: string, extra: Record<string, unknown>) {
+async function call(text: string, firstName: string, extra: Record<string, unknown>) {
   const res = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${process.env.OPENAI_API_KEY}` },
@@ -109,7 +109,7 @@ async function call(text: string, extra: Record<string, unknown>) {
       model: MODEL,
       messages: [
         { role: "system", content: SYSTEM },
-        { role: "user", content: `Review text (title and body):\n"""\n${text}\n"""` },
+        { role: "user", content: `Guest first name: ${firstName || "(unknown)"}\nReview text (title and body):\n"""\n${text}\n"""` },
       ],
       response_format: { type: "json_schema", json_schema: { name: "review_analysis", strict: true, schema } },
       ...extra,
@@ -121,13 +121,13 @@ async function call(text: string, extra: Record<string, unknown>) {
 }
 
 /** One model call per review; one retry on invalid output or transient error. */
-export async function analyse(textForModel: string): Promise<LlmResult> {
+export async function analyse(textForModel: string, firstName = ""): Promise<LlmResult> {
   if (!process.env.OPENAI_API_KEY) throw new Error("OPENAI_API_KEY is not configured");
   const extra: Record<string, unknown> = /^gpt-4/.test(MODEL) ? { temperature: 0 } : {};
   let inT = 0, outT = 0, lastErr: unknown;
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
-      const j = await call(textForModel, extra);
+      const j = await call(textForModel, firstName, extra);
       inT += j.usage?.prompt_tokens ?? 0;
       outT += j.usage?.completion_tokens ?? 0;
       const analysis = validate(JSON.parse(j.choices[0].message.content));
