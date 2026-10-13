@@ -155,7 +155,7 @@ export default function Agent() {
             const info = st.batches[b];
             return (
               <button key={b} className="btn" disabled={!!busy} onClick={() => run(b)}>
-                {busy === b ? <><Spinner small /> Processing…</> : info ? `↻ Re-check ${b} (loaded: ${info.newRows} new)` : `⬇ Load ${b}`}
+                {busy === b ? <><Spinner small /> Processing…</> : info ? `Re-check ${b} (loaded: ${info.newRows} new)` : `Load ${b}`}
               </button>
             );
           })}
@@ -163,7 +163,7 @@ export default function Agent() {
             {busy === "queue" ? <><Spinner small /> Processing…</> : `Process queue (${counts.queued})`}
           </button>
           <label className="btn" style={{ cursor: "pointer" }}>
-            ⬆ Upload CSV
+            Upload CSV
             <input type="file" accept=".csv" hidden onChange={(e) => {
               const f = e.target.files?.[0];
               if (!f) return;
@@ -175,7 +175,7 @@ export default function Agent() {
             const password = prompt("Reset ALL agent data (reviews, work orders, drafts, log)?\nEnter the admin password to confirm:");
             if (!password) return;
             act(async () => { await post("/api/reset", { password }); setMsg({ ok: true, text: "All agent data was reset. Load batch_01.csv to start again." }); });
-          }}>⟲ Reset demo</button>
+          }}>Reset demo</button>
           <span className="small">Only review ids not seen before are analysed – re-loading a file never creates double work.</span>
         </div>}
         {busy && (
@@ -226,10 +226,9 @@ function Spinner({ small }: { small?: boolean }) {
   return <span className={`spinner${small ? " sm" : ""}`} role="status" aria-label="Loading" />;
 }
 
-function Empty({ icon, title, hint }: { icon: string; title: string; hint?: string }) {
+function Empty({ title, hint }: { icon?: string; title: string; hint?: string }) {
   return (
     <div className="empty">
-      <div className="empty-ico">{icon}</div>
       <b>{title}</b>
       {hint && <span>{hint}</span>}
     </div>
@@ -240,8 +239,8 @@ function Skeleton({ failed, retry }: { failed?: string; retry?: () => void }) {
   if (failed) {
     return (
       <div className="wrap" style={{ marginTop: 40 }}>
-        <Empty icon="⚠" title="The agent could not load" hint={failed} />
-        {retry && <p style={{ textAlign: "center", marginTop: 12 }}><button className="btn" onClick={retry}>↻ Try again</button></p>}
+        <Empty title="The agent could not load" hint={failed} />
+        {retry && <p style={{ textAlign: "center", marginTop: 12 }}><button className="btn" onClick={retry}>Try again</button></p>}
       </div>
     );
   }
@@ -256,10 +255,7 @@ function Skeleton({ failed, retry }: { failed?: string; retry?: () => void }) {
   );
 }
 
-const CAT_ICON: Record<string, string> = {
-  "Technical – HVAC": "🌡", "Technical – Water": "💧", "Technical – Electrical / Safety": "⚡", "Technical – Lifts": "🛗",
-  "Technical – IT / TV / Wi-Fi": "📶", "Technical – Building": "🏢", Housekeeping: "🧹", "F&B": "🍽", "Front office / Service": "🛎", Other: "•",
-};
+const CAT_ICON: Record<string, string> = {};
 const SENT_DOT: Record<string, string> = { positive: "ok", negative: "alert", mixed: "warn", neutral: "none" };
 
 function Chip({ children, tone = "none" }: { children: React.ReactNode; tone?: "none" | "ok" | "warn" | "alert" }) {
@@ -273,7 +269,7 @@ function Overview({ counts, pending, openOrders, openSafety, st, reviews, orders
     </div>
   );
   const last = st.log.slice(-6).reverse();
-  if (empty) return <Empty icon="📥" title="No reviews yet" hint="Press “Load batch_01.csv” above to collect and analyse the first reviews." />;
+  if (empty) return <Empty title="No reviews yet" hint="Press “Load batch_01.csv” above to collect and analyse the first reviews." />;
 
   // pipeline numbers
   const analysed = reviews.filter((r) => r.analysis && r.status !== "spam").length;
@@ -328,7 +324,7 @@ function Overview({ counts, pending, openOrders, openSafety, st, reviews, orders
             <div className="bars">
               {cats.map(([c, n]) => (
                 <div key={c} className="bar-row">
-                  <span className="bar-label">{CAT_ICON[c] ?? "•"} {short(c)}</span>
+                  <span className="bar-label">{short(c)}</span>
                   <span className="bar-track"><span className="bar-fill" style={{ width: `${(n / max) * 100}%` }} /></span>
                   <span className="bar-num">{n}</span>
                 </div>
@@ -351,7 +347,7 @@ function Approvals({ items, actor, me, act, post, routing, done }: { items: Revi
   return (
     <div className="grid">
       {!actor && <div className="banner warn" style={{ margin: 0 }}>Choose a GM in “Acting as” (top right) to approve or reject replies. HQ view is read-only.</div>}
-      {items.length === 0 && <Empty icon="✓" title="No replies waiting" hint="Every drafted reply has been approved or rejected." />}
+      {items.length === 0 && <Empty title="No replies waiting" hint="Every drafted reply has been approved or rejected." />}
       {items.map((r) => {
         const can = actor === routing[r.hotel].gm;
         const text = edits[r.id] ?? render(r, r.draft!.text);
@@ -364,20 +360,20 @@ function Approvals({ items, actor, me, act, post, routing, done }: { items: Revi
                 <Chip>{r.rating5 ?? "?"}/5</Chip>
                 <Chip>{(r.analysis?.language ?? "").toUpperCase()}</Chip>
                 <Chip tone={r.analysis?.sentiment === "positive" ? "ok" : r.analysis?.sentiment === "negative" ? "alert" : "warn"}>{r.analysis?.sentiment}</Chip>
-                {safety && <Chip tone="alert">⚠ safety</Chip>}
+                {safety && <Chip tone="alert">safety</Chip>}
               </div>
               <p className="appr-title">{r.title}</p>
               <p className="appr-text">{r.text}</p>
               <div className="appr-issues">
-                {r.analysis?.issues.map((i, k) => <Chip key={k} tone={i.safety_type !== "none" ? "alert" : "none"}>{CAT_ICON[i.category] ?? "•"} {short(i.category)}</Chip>)}
+                {r.analysis?.issues.map((i, k) => <Chip key={k} tone={i.safety_type !== "none" ? "alert" : "none"}>{short(i.category)}</Chip>)}
               </div>
             </div>
             <div className="appr-reply">
               <div className="small" style={{ marginBottom: 4 }}>Drafted reply in the guest&apos;s language · editable · approver: {routing[r.hotel].gm}</div>
               <textarea className="ta" value={text} onChange={(e) => setEdits({ ...edits, [r.id]: e.target.value })} rows={8} />
               <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
-                <button className="btn primary2" disabled={!can} title={can ? "" : "Only the GM of this hotel can approve"} onClick={() => act(() => post("/api/draft", { id: r.id, action: "approve", actor, text: edits[r.id] ? edits[r.id].replace(guest(r), "{{GUEST}}") : undefined }))}>✓ Approve &amp; publish</button>
-                <button className="btn" disabled={!can} onClick={() => act(() => post("/api/draft", { id: r.id, action: "reject", actor }))}>✕ Reject</button>
+                <button className="btn primary2" disabled={!can} title={can ? "" : "Only the GM of this hotel can approve"} onClick={() => act(() => post("/api/draft", { id: r.id, action: "approve", actor, text: edits[r.id] ? edits[r.id].replace(guest(r), "{{GUEST}}") : undefined }))}>Approve &amp; publish</button>
+                <button className="btn" disabled={!can} onClick={() => act(() => post("/api/draft", { id: r.id, action: "reject", actor }))}>Reject</button>
                 {!can && actor && <span className="small" style={{ alignSelf: "center" }}>You are {me?.role} of {me?.hotel}; this needs the GM of {r.hotel}.</span>}
               </div>
             </div>
@@ -409,13 +405,13 @@ function Orders({ orders, actor, act, post, routing, scope }: { orders: WorkOrde
             <h2 style={{ margin: 0 }}>Work orders</h2>
             <div className="sub" style={{ margin: 0 }}>Repeated reports of the same problem at the same hotel are grouped into one work order. The agent never closes anything.</div>
           </div>
-          <div style={{ display: "flex", gap: 8 }}><a className="btn" href={`/api/export?hotels=${scope.length < 12 ? scope.join(",") : ""}${show === "all" ? "&all=1" : ""}`} title="Download the list as an Excel file (open orders, or all if “All” is selected)">⬇ Export to Excel</a><div className="seg"><button className={show === "open" ? "on" : ""} onClick={() => setShow("open")}>Open</button><button className={show === "all" ? "on" : ""} onClick={() => setShow("all")}>All</button></div></div>
+          <div style={{ display: "flex", gap: 8 }}><a className="btn" href={`/api/export?hotels=${scope.length < 12 ? scope.join(",") : ""}${show === "all" ? "&all=1" : ""}`} title="Download the list as an Excel file (open orders, or all if “All” is selected)">Export to Excel</a><div className="seg"><button className={show === "open" ? "on" : ""} onClick={() => setShow("open")}>Open</button><button className={show === "all" ? "on" : ""} onClick={() => setShow("all")}>All</button></div></div>
         </div>
       </div>
-      {list.length === 0 && <Empty icon="🛠" title={show === "open" ? "No open work orders" : "No work orders yet"} hint="Technical complaints in reviews create work orders automatically." />}
+      {list.length === 0 && <Empty title={show === "open" ? "No open work orders" : "No work orders yet"} hint="Technical complaints in reviews create work orders automatically." />}
       {hotelsSorted.map(([h, os]) => (
         <section key={h}>
-          <h3 className="wo-hotel">{h} <span>· {routing[h]?.country} · {os.filter((o) => o.status !== "closed").length} open{os.some((o) => o.safety && o.status !== "closed") ? " · " : ""}{os.some((o) => o.safety && o.status !== "closed") && <b className="safe">⚠ safety</b>}</span></h3>
+          <h3 className="wo-hotel">{h} <span>· {routing[h]?.country} · {os.filter((o) => o.status !== "closed").length} open{os.some((o) => o.safety && o.status !== "closed") ? " · " : ""}{os.some((o) => o.safety && o.status !== "closed") && <b className="safe">safety</b>}</span></h3>
           <div className="wo-grid">
             {os.map((o) => {
               const row = routing[o.hotel];
@@ -425,7 +421,7 @@ function Orders({ orders, actor, act, post, routing, scope }: { orders: WorkOrde
                   <div className="wo-head">
                     <b>{o.id}</b>
                     <span className={`pill ${o.priority === "P1 safety" ? "alert" : o.priority === "P2" ? "warn" : "none"}`}>{o.priority}</span>
-                    <Chip>{CAT_ICON[o.category] ?? "•"} {short(o.category)}</Chip>
+                    <Chip>{short(o.category)}</Chip>
                     {o.reviewIds.length > 1 && <span className="tag hot">×{o.reviewIds.length} reports</span>}
                     <span className={`pill ${o.status === "closed" ? "ok" : "none"}`} style={{ marginLeft: "auto" }}>{o.status.replace("_", " ")}</span>
                   </div>
@@ -462,7 +458,7 @@ function Orders({ orders, actor, act, post, routing, scope }: { orders: WorkOrde
 
 function Reviews({ reviews }: { reviews: Review[] }) {
   const [open, setOpen] = useState("");
-  if (reviews.length === 0) return <Empty icon="💬" title="No reviews in this view" hint="Load a source file or choose another hotel." />;
+  if (reviews.length === 0) return <Empty title="No reviews in this view" hint="Load a source file or choose another hotel." />;
   return (
     <div className="card scroll">
       <table>
@@ -474,7 +470,7 @@ function Reviews({ reviews }: { reviews: Review[] }) {
                 <td><b>{r.id}</b></td><td className="small">{r.receivedAt.slice(5, 10)}</td><td>{r.hotel}</td><td>{r.source}</td><td>{r.rating5 ?? "?"}/5</td>
                 <td>{(r.analysis?.language ?? "–").toUpperCase()}</td>
                 <td>{r.analysis ? <span className="sent"><i className={`dot ${SENT_DOT[r.analysis.sentiment]}`} />{r.analysis.sentiment}</span> : "–"}</td>
-                <td>{[...new Set(r.analysis?.issues.map((i) => i.category))].map((c) => <Chip key={c}>{CAT_ICON[c] ?? "•"} {short(c)}</Chip>)}{!r.analysis?.issues.length && "–"}{r.analysis?.issues.some((i) => i.safety_type !== "none") && <Chip tone="alert">safety</Chip>}</td>
+                <td>{[...new Set(r.analysis?.issues.map((i) => i.category))].map((c) => <Chip key={c}>{short(c)}</Chip>)}{!r.analysis?.issues.length && "–"}{r.analysis?.issues.some((i) => i.safety_type !== "none") && <Chip tone="alert">safety</Chip>}</td>
                 <td><span className={`pill ${r.status === "processed" ? "ok" : r.status === "needs_review" || r.status === "error" ? "alert" : "none"}`}>{r.status.replace("_", " ")}</span>{r.duplicateOf && <span className="small"> of {r.duplicateOf}</span>}</td>
               </tr>
               {open === r.id && (
@@ -495,7 +491,6 @@ function Reviews({ reviews }: { reviews: Review[] }) {
   );
 }
 
-const KIND_ICON: Record<string, string> = { work_order: "🛠", safety_escalation: "⚠", reply: "💬", weekly: "📊" };
 
 function Outbox({ items }: { items: State["outbox"] }) {
   const [open, setOpen] = useState("");
@@ -503,10 +498,10 @@ function Outbox({ items }: { items: State["outbox"] }) {
     <div className="card">
       <h2>Outbox (simulated)</h2>
       <div className="sub">Work-order e-mails, urgent safety alerts, approved public replies and weekly summaries. The demo does not contact real people: addresses are test addresses.</div>
-      {items.length === 0 && <Empty icon="📭" title="Nothing in the outbox yet" hint="Work-order e-mails and approved replies appear here." />}
+      {items.length === 0 && <Empty title="Nothing in the outbox yet" hint="Work-order e-mails and approved replies appear here." />}
       {items.map((m) => (
         <div key={m.id} style={{ borderTop: "1px solid var(--line)", padding: "8px 0", cursor: "pointer" }} onClick={() => setOpen(open === m.id ? "" : m.id)}>
-          <span className={`pill ${m.kind === "safety_escalation" ? "alert" : m.kind === "reply" ? "ok" : "none"}`}>{KIND_ICON[m.kind]} {m.kind.replace("_", " ")}</span>{" "}
+          <span className={`pill ${m.kind === "safety_escalation" ? "alert" : m.kind === "reply" ? "ok" : "none"}`}>{m.kind.replace("_", " ")}</span>{" "}
           <b>{m.subject}</b> <span className="small">→ {m.to.join(", ")} · {fmtT(m.createdAt)}</span>
           {open === m.id && <pre style={{ whiteSpace: "pre-wrap", font: "inherit", color: "var(--text-2)", margin: "8px 0 0" }}>{m.body}</pre>}
         </div>
@@ -517,17 +512,11 @@ function Outbox({ items }: { items: State["outbox"] }) {
 
 function logIcon(l: State["log"][number]): { icon: string; tone: string } {
   const t = l.text;
-  if (/SAFETY ESCALATION|UPGRADED to a safety/.test(t)) return { icon: "⚠", tone: "alert" };
+  if (/SAFETY ESCALATION|UPGRADED to a safety/.test(t)) return { icon: "!", tone: "alert" };
   if (/APPROVED/.test(t)) return { icon: "✓", tone: "ok" };
-  if (/REJECTED/.test(t)) return { icon: "✕", tone: "none" };
-  if (/CLOSED/.test(t)) return { icon: "🔒", tone: "ok" };
-  if (/duplicate of/.test(t)) return { icon: "⧉", tone: "none" };
-  if (/spam/.test(t)) return { icon: "⊘", tone: "none" };
-  if (/ADDED to/.test(t)) return { icon: "＋", tone: "warn" };
-  if (/Work order .* created/.test(t)) return { icon: "🛠", tone: "none" };
-  if (/Reply to guest drafted/.test(t)) return { icon: "✎", tone: "none" };
   if (/failed/.test(t)) return { icon: "!", tone: "alert" };
-  return { icon: l.actor === "agent" ? "🤖" : "👤", tone: "none" };
+  if (/ADDED to/.test(t)) return { icon: "+", tone: "warn" };
+  return { icon: "", tone: "none" };
 }
 
 function Log({ st }: { st: State }) {
@@ -538,7 +527,7 @@ function Log({ st }: { st: State }) {
       <h2>Action log</h2>
       <div className="sub">Every decision the agent or a person made, in plain English. Nothing is hidden or edited afterwards.</div>
       <input className="ta" style={{ height: 36, marginBottom: 12 }} placeholder="Search (review id, work order, hotel, person…)" value={q} onChange={(e) => setQ(e.target.value)} />
-      {rows.length === 0 && <Empty icon="🧾" title={q ? "No log entries match your search" : "The log is empty"} hint={q ? "Try another word." : "Entries appear as soon as the agent processes reviews."} />}
+      {rows.length === 0 && <Empty title={q ? "No log entries match your search" : "The log is empty"} hint={q ? "Try another word." : "Entries appear as soon as the agent processes reviews."} />}
       <ol className="timeline">
         {rows.slice(0, 300).map((l, i) => {
           const { icon, tone } = logIcon(l);
@@ -571,8 +560,8 @@ function Weekly({ api, act, post, setMsg }: { api: Api; act: (f: () => Promise<u
           <button className="btn" disabled={!week} onClick={() => act(async () => { const j = (await post("/api/weekly", { week, hotels: Object.keys(api.routing) })) as { queued: number }; setMsg({ ok: true, text: `${j.queued} weekly summaries queued to the GMs (see Outbox).` }); })}>Queue to GMs</button>
         </div>
       </div>
-      {!week && <Empty icon="📅" title="No reviews loaded yet" hint="The weekly summary appears after the first reviews are analysed." />}
-      {week && rows.length === 0 && <Empty icon="📭" title="Nothing to report for this week" />}
+      {!week && <Empty title="No reviews loaded yet" hint="The weekly summary appears after the first reviews are analysed." />}
+      {week && rows.length === 0 && <Empty title="Nothing to report for this week" />}
       {rows.length > 0 && (
         <div className="scroll"><table>
           <thead><tr><th>Hotel</th><th className="n">Reviews</th><th style={{ width: 190 }}>Average rating</th><th>Trend</th><th style={{ width: 170 }}>Issue reports</th><th>Top issues</th><th className="n" title="All work orders that are open today, whichever week they were created">Open WOs (all weeks, now)</th><th className="n" title="Open safety cases today">Safety open (now)</th><th className="n" title="Drafted replies still waiting for approval, for this week's reviews">Replies pending (this week)</th></tr></thead>
