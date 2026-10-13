@@ -15,6 +15,7 @@ interface Api {
 }
 type Tab = "overview" | "approvals" | "orders" | "reviews" | "outbox" | "log" | "weekly" | "quality";
 
+const SAFETY_SHORT: Record<string, string> = { electrical: "electrical", smoke_fire: "fire alarm", lift_trapped: "lift", water_leak: "water leak" };
 const guest = (r: Review) => r.reviewer.split(/[\s.]/)[0] || "Guest";
 const render = (r: Review, t: string) => t.replaceAll("{{GUEST}}", guest(r));
 const short = (c: string) => c.replace("Technical – ", "T · ");
@@ -119,9 +120,21 @@ export default function Agent() {
       </header>
       <div className="wrap">
         {openSafety.length > 0 && (
-          <div className="banner alert" style={{ marginTop: 14 }}>
-            <b>⚠ {openSafety.length} open safety case{openSafety.length > 1 ? "s" : ""}:</b>{" "}
-            {openSafety.map((o) => `${o.hotel} ${o.id}`).join(" · ")} – urgent alert queued for the chief engineer and GM (simulated outbox); only a GM can close them.
+          <div className="safety">
+            <div className="safety-head">
+              <span className="safety-ico">⚠</span>
+              <div>
+                <b>{openSafety.length} open safety case{openSafety.length > 1 ? "s" : ""}</b>
+                <div className="safety-sub">Urgent alerts are queued for the chief engineer and GM (simulated outbox). Only a GM can close a safety case.</div>
+              </div>
+            </div>
+            <div className="safety-chips">
+              {openSafety.map((o) => (
+                <button key={o.id} className="chip" onClick={() => setTab("orders")} title={`${o.id}: ${o.summary[0] ?? ""}`}>
+                  <b>{o.hotel}</b> {SAFETY_SHORT[o.safetyType] ?? "safety"} <span className="chip-id">{o.id}</span>
+                </button>
+              ))}
+            </div>
           </div>
         )}
         {msg && <div className={`banner ${msg.ok ? "ok" : "alert"}`} style={{ marginTop: 10 }}>{msg.text}</div>}
