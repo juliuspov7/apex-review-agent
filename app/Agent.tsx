@@ -79,15 +79,24 @@ export default function Agent() {
 
   if (!api || !st) return <div className="wrap"><p style={{ marginTop: 40 }}>Loading…</p></div>;
 
-  const pending = reviews.filter((r) => r.draft?.status === "pending" && visHotel(r.hotel));
-  const openSafety = orders.filter((o) => o.safety && o.status !== "closed");
-  const openOrders = orders.filter((o) => o.status !== "closed");
+  // everything the user sees is limited to the hotel they act for (HQ: all hotels or the chosen one)
+  const rv = reviews.filter((r) => visHotel(r.hotel));
+  const ord = orders.filter((o) => visHotel(o.hotel));
+  const outboxS = [...st.outbox].reverse().filter((o) => visHotel(outboxHotel(o, st, api.routing)));
+  const hotelOfLog = (l: State["log"][number]) => (l.workOrder && st.workOrders[l.workOrder]?.hotel) || (l.review && st.reviews[l.review]?.hotel) || "";
+  const logS = st.log.filter((l) => (me || hotel !== "All" ? visHotel(hotelOfLog(l)) : true));
+  const stS: State = { ...st, log: logS };
+  const routingS = Object.fromEntries(Object.entries(api.routing).filter(([h]) => visHotel(h)));
+  const apiS: Api = { ...api, routing: routingS };
+  const pending = rv.filter((r) => r.draft?.status === "pending");
+  const openSafety = ord.filter((o) => o.safety && o.status !== "closed");
+  const openOrders = ord.filter((o) => o.status !== "closed");
   const counts = {
-    total: reviews.length,
-    queued: reviews.filter((r) => r.status === "queued").length,
-    dup: reviews.filter((r) => r.status === "duplicate").length,
-    spam: reviews.filter((r) => r.status === "spam").length,
-    review: reviews.filter((r) => r.status === "needs_review" || r.status === "error").length,
+    total: rv.length,
+    queued: reviews.filter((r) => r.status === "queued").length, // global: the agent processes the whole queue
+    dup: rv.filter((r) => r.status === "duplicate").length,
+    spam: rv.filter((r) => r.status === "spam").length,
+    review: rv.filter((r) => r.status === "needs_review" || r.status === "error").length,
   };
   void inScope;
 
@@ -117,7 +126,7 @@ export default function Agent() {
         )}
         {msg && <div className={`banner ${msg.ok ? "ok" : "alert"}`} style={{ marginTop: 10 }}>{msg.text}</div>}
 
-        <div className="bar">
+        {!me && <div className="bar">
           <b>Source files</b>
           {api.bundled.map((b) => {
             const info = st.batches[b];
@@ -145,15 +154,15 @@ export default function Agent() {
             act(async () => { await post("/api/reset", { password }); setMsg({ ok: true, text: "All agent data was reset. Load batch_01.csv to start again." }); });
           }}>⟲ Reset demo</button>
           <span className="small">Only review ids not seen before are analysed – re-loading a file never creates double work.</span>
-        </div>
+        </div>}
 
         <div className="tabs" style={{ overflowX: "auto" }}>
-          {([["overview", "Overview"], ["approvals", `Approvals (${pending.length})`], ["orders", `Work orders (${openOrders.length})`], ["reviews", `Reviews (${counts.total})`], ["outbox", `Outbox (${st.outbox.length})`], ["log", "Action log"], ["weekly", "Weekly"], ["quality", "Quality & cost"]] as [Tab, string][]).map(([k, l]) => (
+          {([["overview", "Overview"], ["approvals", `Approvals (${pending.length})`], ["orders", `Work orders (${openOrders.length})`], ["reviews", `Reviews (${rv.length})`], ["outbox", `Outbox (${outboxS.length})`], ["log", "Action log"], ["weekly", "Weekly"], ["quality", "Quality & cost"]] as [Tab, string][]).map(([k, l]) => (
             <button key={k} className={tab === k ? "on" : ""} onClick={() => setTab(k)}>{l}</button>
           ))}
         </div>
         <div style={{ marginTop: 16 }}>
-          {tab !== "overview" && tab !== "quality" && !me && (
+          {tab !== "quality" && !me && (
             <div className="bar" style={{ marginTop: 0 }}>
               <label>Hotel
                 <select value={hotel} onChange={(e) => setHotel(e.target.value)}>
@@ -163,13 +172,13 @@ export default function Agent() {
               </label>
             </div>
           )}
-          {tab === "overview" && <Overview counts={counts} pending={pending.length} openOrders={openOrders.length} openSafety={openSafety} st={st} reviews={reviews} setTab={setTab} />}
-          {tab === "approvals" && <Approvals items={pending} actor={actor} me={me} act={act} post={post} routing={api.routing} done={reviews.filter((r) => r.draft && r.draft.status !== "pending" && visHotel(r.hotel))} />}
-          {tab === "orders" && <Orders orders={orders.filter((o) => visHotel(o.hotel))} actor={actor} act={act} post={post} routing={api.routing} />}
-          {tab === "reviews" && <Reviews reviews={reviews.filter((r) => visHotel(r.hotel))} />}
-          {tab === "outbox" && <Outbox items={[...st.outbox].reverse().filter((o) => visHotel(outboxHotel(o, st, api.routing)))} />}
-          {tab === "log" && <Log st={st} />}
-          {tab === "weekly" && <Weekly api={api} act={act} post={post} setMsg={setMsg} />}
+          {tab === "overview" && <Overview counts={counts} pending={pending.length} openOrders={openOrders.length} openSafety={openSafety} st={stS} reviews={rv} setTab={setTab} />}
+          {tab === "approvals" && <Approvals items={pending} actor={actor} me={me} act={act} post={post} routing={api.routing} done={rv.filter((r) => r.draft && r.draft.status !== "pending")} />}
+          {tab === "orders" && <Orders orders={ord} actor={actor} act={act} post={post} routing={api.routing} />}
+          {tab === "reviews" && <Reviews reviews={rv} />}
+          {tab === "outbox" && <Outbox items={outboxS} />}
+          {tab === "log" && <Log st={stS} />}
+          {tab === "weekly" && <Weekly api={apiS} act={act} post={post} setMsg={setMsg} />}
           {tab === "quality" && <Quality api={api} />}
         </div>
       </div>
@@ -377,7 +386,7 @@ function Weekly({ api, act, post, setMsg }: { api: Api; act: (f: () => Promise<u
         <h2>Weekly summary per hotel</h2>
         <div style={{ display: "flex", gap: 8 }}>
           <select value={week} onChange={(e) => setWeek(e.target.value)}>{api.weeks.map((w) => <option key={w} value={w}>Week of {w}</option>)}</select>
-          <button className="btn" disabled={!week} onClick={() => act(async () => { const j = (await post("/api/weekly", { week })) as { queued: number }; setMsg({ ok: true, text: `${j.queued} weekly summaries queued to the GMs (see Outbox).` }); })}>Queue to GMs</button>
+          <button className="btn" disabled={!week} onClick={() => act(async () => { const j = (await post("/api/weekly", { week, hotels: Object.keys(api.routing) })) as { queued: number }; setMsg({ ok: true, text: `${j.queued} weekly summaries queued to the GMs (see Outbox).` }); })}>Queue to GMs</button>
         </div>
       </div>
       {!week && <p className="small">No reviews loaded yet.</p>}

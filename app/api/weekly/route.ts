@@ -5,10 +5,10 @@ export const dynamic = "force-dynamic";
 
 /** Queue one weekly summary e-mail per hotel GM (simulated outbox). */
 export async function POST(req: Request) {
-  const { week } = (await req.json()) as { week: string };
+  const { week, hotels } = (await req.json()) as { week: string; hotels?: string[] };
   const r = await routing();
   const n = await withState((st) => {
-  const rows = weekly(st, week, Object.keys(r));
+  const rows = weekly(st, week, hotels?.length ? hotels.filter((h) => r[h]) : Object.keys(r));
   let n = 0;
   for (const row of rows) {
     if (!row.reviews && !row.openWorkOrders) continue;
