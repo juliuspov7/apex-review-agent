@@ -1,0 +1,74 @@
+{
+ "H01": {
+  "country": "RO",
+  "gm": "gm.h01@apex-test.example",
+  "engineer": "tech.h01@apex-test.example",
+  "housekeeping": "hk.h01@apex-test.example"
+ },
+ "H02": {
+  "country": "LT",
+  "gm": "gm.h02@apex-test.example",
+  "engineer": "tech.h02@apex-test.example",
+  "housekeeping": "hk.h02@apex-test.example"
+ },
+ "H03": {
+  "country": "RO",
+  "gm": "gm.h03@apex-test.example",
+  "engineer": "tech.h03@apex-test.example",
+  "housekeeping": "hk.h03@apex-test.example"
+ },
+ "H04": {
+  "country": "LT",
+  "gm": "gm.h04@apex-test.example",
+  "engineer": "tech.h04@apex-test.example",
+  "housekeeping": "hk.h04@apex-test.example"
+ },
+ "H05": {
+  "country": "LV",
+  "gm": "gm.h05@apex-test.example",
+  "engineer": "tech.h05@apex-test.example",
+  "housekeeping": "hk.h05@apex-test.example"
+ },
+ "H06": {
+  "country": "RO",
+  "gm": "gm.h06@apex-test.example",
+  "engineer": "tech.h06@apex-test.example",
+  "housekeeping": "hk.h06@apex-test.example"
+ },
+ "H07": {
+  "country": "RO",
+  "gm": "gm.h07@apex-test.example",
+  "engineer": "tech.h07@apex-test.example",
+  "housekeeping": "hk.h07@apex-test.example"
+ },
+ "H08": {
+  "country": "RO",
+  "gm": "gm.h08@apex-test.example",
+  "engineer": "tech.h08@apex-test.example",
+  "housekeeping": "hk.h08@apex-test.example"
+ },
+ "H09": {
+  "country": "LT",
+  "gm": "gm.h09@apex-test.example",
+  "engineer": "tech.h09@apex-test.example",
+  "housekeeping": "hk.h09@apex-test.example"
+ },
+ "H10": {
+  "country": "PL",
+  "gm": "gm.h10@apex-test.example",
+  "engineer": "tech.h10@apex-test.example",
+  "housekeeping": "hk.h10@apex-test.example"
+ },
+ "H11": {
+  "country": "EE",
+  "gm": "gm.h11@apex-test.example",
+  "engineer": "tech.h11@apex-test.example",
+  "housekeeping": "hk.h11@apex-test.example"
+ },
+ "H12": {
+  "country": "IT",
+  "gm": "gm.h12@apex-test.example",
+  "engineer": "tech.h12@apex-test.example",
+  "housekeeping": "hk.h12@apex-test.example"
+ }
+}

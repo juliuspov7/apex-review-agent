@@ -1,0 +1,21 @@
+﻿review_id,received_at,source,hotel_id,rating,rating_scale,reviewer_name,title,text
+RV-0081,2026-09-22T10:29:00,Google,H01,4,1-5,Elena,Lift blocat din nou,"Liftul s-a blocat din nou, a doua oară săptămâna asta. Personalul este bun, dar mentenanța lipsește."
+RV-0082,2026-09-22T12:53:00,Booking,H09,3,1-10,Darius,Šaltas vanduo duše,"Du rytus iš eilės duše tekėjo tik šaltas vanduo. Registratūroje pasakė, kad „žino problemą“. Kada sutvarkys?"
+RV-0083,2026-09-22T14:36:00,TripAdvisor,H12,5,1-5,Francesco,Esperienza eccellente,"Tutto perfetto, dalla colazione alla pulizia. Personale molto professionale."
+RV-0084,2026-09-22T15:24:00,Google,H03,2,1-5,Ionuț,Wi-Fi și TV,"Nici Wi-Fi-ul, nici TV-ul nu au funcționat două zile. Am cerut ajutor de trei ori."
+RV-0085,2026-09-22T16:24:00,Booking,H10,2,1-10,Łukasz,Woda z sufitu,"Z sufitu w łazience kapała woda, prawdopodobnie przeciek z pokoju wyżej. Pokój 214. Zgłoszone, bez reakcji przez cały dzień."
+RV-0086,2026-09-22T19:05:00,Google,H06,5,1-5,Raluca,Minunat,"Personal excelent, camere curate, liniște. Revenim cu plăcere."
+RV-0087,2026-09-22T21:22:00,Booking,H02,4,1-10,Mark,AC noisy and weak,"AC was loud and barely cooling. Asked for a technician, came the next day and said it needs a part. Room 220."
+RV-0088,2026-09-22T22:34:00,TripAdvisor,H11,5,1-5,Mari,Super,"Great sauna, very clean rooms, nice staff. Would recommend to friends."
+RV-0089,2026-09-23T00:31:00,Google,H07,1,1-5,Herbert,Gefährlich,Im Badezimmer hing ein loses Kabel aus der Decke neben der Lampe. Das ist lebensgefährlich! Zimmer 409. Bitte sofort prüfen.
+RV-0090,2026-09-23T01:39:00,Google,H04,3,1-5,Vaida,Nešvaru,"Kambarys nebuvo išvalytas po ankstesnių svečių – rankšluosčiai naudoti. Pakeitė, bet įspūdis prastas."
+RV-0091,2026-09-23T04:14:00,Booking,H08,8,1-10,Sorin,Bine,"Cameră confortabilă, mic dejun bun. Aerul condiționat puțin zgomotos."
+RV-0092,2026-09-23T06:31:00,Google,H05,2,1-5,Kevin,Heating off,"Our room had no heating at the end of September, 15°C inside. Reception said the heating season has not started yet. Seriously?"
+RV-0093,2026-09-23T07:11:00,Google,H12,4,1-5,Giorgio,Parcheggio piccolo,Hotel bello ma il parcheggio è molto piccolo e il cancello automatico non funzionava.
+RV-0094,2026-09-23T08:00:00,Google,H09,5,1-5,Jurgita,Ačiū komandai,"Nuostabus aptarnavimas, ypač restorano komanda. Kambarys erdvus ir šviesus."
+RV-0095,2026-09-23T10:52:00,Booking,H01,2,1-10,Maria,Very hot room,"Room temperature 28°C, AC not working, no other room available. Terrible sleep. Booking no. 77812345."
+RV-0096,2026-09-23T13:48:00,TripAdvisor,H10,5,1-5,Joanna,Polecam,"Wszystko super – czysto, miło, smacznie. Na pewno wrócimy."
+RV-0097,2026-09-23T15:38:00,TripAdvisor,H03,3,1-5,Philipp,Dusche kaputt,Die Duschbrause war abgebrochen und die Armatur tropfte. Wurde erst am zweiten Tag repariert.
+RV-0098,2026-09-23T17:35:00,Booking,H06,1,1-10,Lucian,Promo,Cele mai bune oferte de cazare și bilete de avion la www.cheap-travel-deals.example – vizitați acum!
+RV-0099,2026-09-23T19:34:00,Google,H11,3,1-5,Toomas,Elevator again,"Elevator out of service again, same as during my stay last month. Please fix it properly this time."
+RV-0100,2026-09-23T22:11:00,TripAdvisor,H02,2,1-5,Rasa,Neveikė kondicionierius,"Liepos mėnesį kambaryje neveikė kondicionierius, buvo 29 laipsniai. Atnešė ventiliatorių. Už tokią kainą – nepriimtina."

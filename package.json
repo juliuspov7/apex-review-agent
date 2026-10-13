@@ -1,0 +1,25 @@
+{
+  "name": "apex-review-agent",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "test": "node --test tests/pipeline.test.ts",
+    "eval": "node --env-file=.env.local scripts/eval.ts",
+    "smoke": "node --env-file=.env.local scripts/smoke.ts"
+  },
+  "dependencies": {
+    "@vercel/blob": "^2.8.1",
+    "next": "16.4.0",
+    "react": "19.3.0",
+    "react-dom": "19.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "typescript": "^5"
+  }
+}
