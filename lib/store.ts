@@ -12,14 +12,17 @@ const localDir = path.join(process.cwd(), ".local-store");
 export interface Stored {
   buf: Buffer;
   updatedAt: Date;
+  etag?: string;
 }
+
+export class ConflictError extends Error {}
 
 export async function readStored(name: string): Promise<Stored | null> {
   if (useBlob) {
     const res = await get(name, { access: "private", useCache: false });
     if (!res || res.statusCode !== 200) return null;
     const buf = Buffer.from(await new Response(res.stream).arrayBuffer());
-    return { buf, updatedAt: new Date(res.blob.uploadedAt) };
+    return { buf, updatedAt: new Date(res.blob.uploadedAt), etag: res.blob.etag };
   }
   try {
     const p = path.join(localDir, name);
@@ -30,14 +33,20 @@ export async function readStored(name: string): Promise<Stored | null> {
   }
 }
 
-export async function writeStored(name: string, body: Buffer | string, contentType: string) {
+export async function writeStored(name: string, body: Buffer | string, contentType: string, ifMatch?: string) {
   if (useBlob) {
-    await put(name, body, {
-      access: "private",
-      addRandomSuffix: false,
-      allowOverwrite: true,
-      contentType,
-    });
+    try {
+      await put(name, body, {
+        access: "private",
+        addRandomSuffix: false,
+        allowOverwrite: true,
+        contentType,
+        ...(ifMatch ? { ifMatch } : {}),
+      });
+    } catch (e) {
+      if (ifMatch && /precondition|etag|412/i.test(`${(e as Error).name} ${(e as Error).message}`)) throw new ConflictError("state changed concurrently");
+      throw e;
+    }
     return;
   }
   const p = path.join(localDir, name);

@@ -1,4 +1,4 @@
-import { collect, loadState, saveState } from "@/lib/pipeline";
+import { collect, withState } from "@/lib/pipeline";
 import { parseCsv } from "@/lib/csv";
 
 export const dynamic = "force-dynamic";
@@ -14,8 +14,6 @@ export async function POST(req: Request) {
   const need = ["review_id", "received_at", "source", "hotel_id", "rating", "rating_scale", "title", "text"];
   const miss = need.filter((c) => !(rows[0] && c in rows[0]));
   if (!rows.length || miss.length) return Response.json({ error: `Not a valid reviews file${miss.length ? `: missing column(s) ${miss.join(", ")}` : ""}` }, { status: 422 });
-  const st = await loadState();
-  const collected = collect(st, csv, file.name);
-  await saveState(st);
+  const collected = await withState((st) => collect(st, csv, file.name));
   return Response.json({ ok: true, collected });
 }

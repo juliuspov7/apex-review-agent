@@ -5,7 +5,7 @@ import { analyse } from "./llm.ts";
 import { matchWorkOrder } from "./match.ts";
 import { scrub } from "./pii.ts";
 import { safetyNet } from "./safety.ts";
-import { readStored, writeStored } from "./store.ts";
+import { ConflictError, readStored, writeStored } from "./store.ts";
 import {
   emptyState, isTechnical,
   type Analysis, type Category, type Issue, type OutboxItem, type Review, type SafetyType, type State, type WorkOrder,
@@ -19,13 +19,36 @@ export async function routing(): Promise<Record<string, RouteRow>> {
 }
 
 const STATE_FILE = "agent/state.json";
-export async function loadState(): Promise<State> {
+async function loadWithEtag(): Promise<{ st: State; etag?: string }> {
   const s = await readStored(STATE_FILE);
-  return s ? ({ ...emptyState(), ...JSON.parse(s.buf.toString("utf8")) } as State) : emptyState();
+  return { st: s ? ({ ...emptyState(), ...JSON.parse(s.buf.toString("utf8")) } as State) : emptyState(), etag: s?.etag };
 }
-export async function saveState(st: State) {
+export async function loadState(): Promise<State> {
+  return (await loadWithEtag()).st;
+}
+export async function saveState(st: State, etag?: string) {
   st.log = st.log.slice(-5000);
-  await writeStored(STATE_FILE, JSON.stringify(st), "application/json");
+  await writeStored(STATE_FILE, JSON.stringify(st), "application/json", etag);
+}
+
+/**
+ * Read-modify-write with optimistic locking: the write only succeeds if nobody changed the state in between
+ * (Blob ETag). On conflict the change is re-applied to the fresh state, so parallel actions (an approval while
+ * a batch is being processed) cannot overwrite each other.
+ */
+export async function withState<T>(fn: (st: State) => Promise<T> | T): Promise<T> {
+  for (let attempt = 0; attempt < 8; attempt++) {
+    const { st, etag } = await loadWithEtag();
+    const out = await fn(st);
+    try {
+      await saveState(st, etag);
+      return out;
+    } catch (e) {
+      if (!(e instanceof ConflictError)) throw e;
+      await new Promise((r) => setTimeout(r, 150 * (attempt + 1)));
+    }
+  }
+  throw new Error("The system is busy, please try again");
 }
 
 export const BUNDLED_BATCHES = ["batch_01.csv", "batch_02.csv"];
@@ -221,11 +244,12 @@ export async function applyAnalysis(st: State, rev: Review, a: Analysis, r: Reco
   rev.status = a.needs_human_review ? "needs_review" : "processed";
 }
 
-export async function processQueued(st: State, limit = 30, concurrency = 6) {
-  const r = await routing();
+type Result = { net: ReturnType<typeof safetyNet>; res?: Awaited<ReturnType<typeof analyse>>; err?: Error & { inTokens?: number; outTokens?: number } };
+
+/** Phase 1: AI analysis of queued reviews, in parallel. Reads the state, changes nothing. */
+export async function analyseQueue(st: State, limit = 30, concurrency = 6) {
   const queue = Object.values(st.reviews).filter((x) => x.status === "queued").sort((a, b) => a.receivedAt.localeCompare(b.receivedAt)).slice(0, limit);
-  // phase 1: AI analysis, in parallel (touches no shared state)
-  const results = new Map<string, { net: ReturnType<typeof safetyNet>; res?: Awaited<ReturnType<typeof analyse>>; err?: Error & { inTokens?: number; outTokens?: number } }>();
+  const results = new Map<string, Result>();
   let i = 0;
   async function worker() {
     while (i < queue.length) {
@@ -236,7 +260,13 @@ export async function processQueued(st: State, limit = 30, concurrency = 6) {
     }
   }
   await Promise.all(Array.from({ length: Math.min(concurrency, queue.length) }, worker));
-  // phase 2: act on the results one by one in the order the reviews arrived (keeps grouping deterministic)
+  return results;
+}
+
+/** Phase 2: act on the results one by one in arrival order (keeps grouping deterministic). */
+export async function applyResults(st: State, results: Map<string, Result>) {
+  const r = await routing();
+  const queue = Object.values(st.reviews).filter((x) => x.status === "queued" && results.has(x.id)).sort((a, b) => a.receivedAt.localeCompare(b.receivedAt));
   let done = 0, failed = 0;
   for (const rev of queue) {
     const { net, res, err } = results.get(rev.id)!;
@@ -267,6 +297,10 @@ export async function processQueued(st: State, limit = 30, concurrency = 6) {
   }
   const remaining = Object.values(st.reviews).filter((x) => x.status === "queued" && (x.attempts ?? 0) < 3).length;
   return { done, failed, remaining };
+}
+
+export async function processQueued(st: State, limit = 30, concurrency = 6) {
+  return applyResults(st, await analyseQueue(st, limit, concurrency));
 }
 
 // ---------------------------------------------------------------- 3. humans decide

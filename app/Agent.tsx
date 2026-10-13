@@ -100,7 +100,7 @@ export default function Agent() {
           <div className="status"><span>AI: {api.model}</span><span>Cost so far: ${st.usage.costUsd.toFixed(3)} ({st.usage.calls} calls)</span></div>
           <div className="sp" />
           <label className="status" style={{ gap: 8, alignItems: "center" }}>
-            Acting as
+            Acting as (demo simulation, no real sign-in)
             <select value={actor} onChange={(e) => setActor(e.target.value)} style={{ color: "var(--text)" }}>
               <option value="">HQ – read only</option>
               {api.actors.map((a) => <option key={a.email} value={a.email}>{a.hotel} · {a.role} · {a.email}</option>)}

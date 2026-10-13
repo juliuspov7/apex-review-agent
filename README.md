@@ -19,9 +19,9 @@ CSV batch → collect (only unseen review ids; cross-posts linked) → remove co
 ```
 
 ## Human in the loop
-- No reply is released without the approval of **that hotel's GM** (checked on the server; "Acting as" in the header simulates the sign-in).
+- No reply is released without the approval of **that hotel's GM**. The server checks the approver against the Routing sheet, but in this demo the identity itself is **simulated**: the "Acting as" selector sends the e-mail from the browser, so anyone who can reach the app could claim to be a GM. It is a demonstration of the permission model, not authentication.
 - Safety work orders can only be closed by the GM and need a note. The agent never closes anything.
-- In a real roll-out the "Acting as" selector is replaced by Microsoft Entra sign-in (groups: GM per hotel, chief engineer per hotel, HQ read-only).
+- In a real roll-out the identity comes from Microsoft Entra sign-in and is read from the verified token on the server (groups: GM per hotel, chief engineer per hotel, HQ read-only); the client never states who it is.
 
 ## Personal data
 | Data | Model | Work order | Stored |
@@ -60,7 +60,7 @@ Env vars on Vercel: `OPENAI_API_KEY`, `DASH_PASSWORD`, `ADMIN_PASSWORD` (reset b
 
 ## Known limitations
 - E-mails, Teams and public replies are simulated (outbox); connecting Graph / SMTP / platform APIs is the next step.
-- State is one JSON document in Blob: fine for hundreds of reviews, a database (Postgres) is the next step for thousands.
+- State is one JSON document in Blob. Writes use an ETag check (optimistic locking) and are retried on conflict, so an approval made while a batch is being processed is not lost. This is fine for hundreds of reviews; a database (Postgres) is the next step for thousands and for several simultaneous approvers.
 - Reviews are loaded from files; a scheduled import from the platforms' APIs is not built.
 - Language support depends on the model; replies in rarer languages should be checked by the GM (fallback English).
 - If a guest mentions an earlier stay, the work order gets a "please verify" note; it is never suppressed.

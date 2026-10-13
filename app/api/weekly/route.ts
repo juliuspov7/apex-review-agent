@@ -1,4 +1,4 @@
-import { loadState, routing, saveState } from "@/lib/pipeline";
+import { routing, withState } from "@/lib/pipeline";
 import { weekly, weeklyText } from "@/lib/weekly";
 
 export const dynamic = "force-dynamic";
@@ -6,8 +6,8 @@ export const dynamic = "force-dynamic";
 /** Queue one weekly summary e-mail per hotel GM (simulated outbox). */
 export async function POST(req: Request) {
   const { week } = (await req.json()) as { week: string };
-  const st = await loadState();
   const r = await routing();
+  const n = await withState((st) => {
   const rows = weekly(st, week, Object.keys(r));
   let n = 0;
   for (const row of rows) {
@@ -20,6 +20,7 @@ export async function POST(req: Request) {
     n++;
   }
   st.log.push({ ts: new Date().toISOString(), actor: "agent", text: `Weekly summaries for the week of ${week} queued for ${n} GMs.` });
-  await saveState(st);
+  return n;
+  });
   return Response.json({ ok: true, queued: n });
 }
