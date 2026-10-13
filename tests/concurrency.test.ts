@@ -66,8 +66,7 @@ test("a reset while an AI batch is in flight is not undone by the late batch res
   const csv = [
     "review_id,received_at,source,hotel_id,rating,rating_scale,reviewer_name,title,text",
     'RV-9,2026-09-01T10:00:00,Google,H03,4,1-5,Anna K.,Slow,"Slow check-in at the reception desk"',
-  ].join("
-");
+  ].join("\n");
   await withState((st) => collect(st, csv, "b.csv"));
   const late = new Map([["RV-9", { net: null, res: { analysis: { language: "en", sentiment: "negative", spam: false, refers_to_past_stay: false, issues: [], reason: "x", draft_reply: "Dear Anna" }, inTokens: 1, outTokens: 1, costUsd: 0 } }]]);
   const batch = (async () => { await sleep(60); return withState((st) => applyResults(st, late)); })();
