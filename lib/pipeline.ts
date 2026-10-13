@@ -115,7 +115,7 @@ const TYPE_TO_CAT: Record<Exclude<SafetyType, "none">, Category> = {
   water_leak: "Technical – Water",
 };
 const SAFETY_LABEL: Record<Exclude<SafetyType, "none">, string> = {
-  electrical: "electrical hazard", smoke_fire: "smoke / fire alarm", lift_trapped: "person trapped in lift", water_leak: "water leak / flooding",
+  electrical: "possible electrical hazard", smoke_fire: "possible smoke / fire-alarm problem", lift_trapped: "lift malfunction, possible entrapment", water_leak: "possible water leak / flooding",
 };
 
 function ownerFor(cat: Category, hotel: string, r: Record<string, RouteRow>) {
@@ -199,7 +199,7 @@ export async function applyAnalysis(st: State, rev: Review, a: Analysis, r: Reco
     } else {
       guestIssues.push({
         category: cat,
-        summary: `Possible ${SAFETY_LABEL[a.net_safety as Exclude<SafetyType, "none">]} (flagged by safety keyword check)`,
+        summary: `Safety risk reported: ${SAFETY_LABEL[a.net_safety as Exclude<SafetyType, "none">]} (flagged by the safety keyword check)`,
         urgency: "critical", safety_type: a.net_safety,
       });
     }
@@ -225,7 +225,7 @@ export async function applyAnalysis(st: State, rev: Review, a: Analysis, r: Reco
     if (!rev.workOrderIds.includes(wo.id)) rev.workOrderIds.push(wo.id);
     if (created) {
       log(st, { review: rev.id, workOrder: wo.id, text: `Work order ${wo.id} created (${wo.priority}) for ${wo.hotel} – ${wo.category}, assigned to ${wo.assignedTo}.` });
-      if (wo.safety) escalate(st, wo, rev, r, `${SAFETY_LABEL[safety as Exclude<SafetyType, "none">]} described in review ${rev.id}${a.net_safety ? " (confirmed by keyword check)" : ""}.`);
+      if (wo.safety) escalate(st, wo, rev, r, `${SAFETY_LABEL[safety as Exclude<SafetyType, "none">]} reported in review ${rev.id} (the guest report is not verified)${a.net_safety ? "; confirmed by keyword check" : ""}.`);
       else
         send(st, {
           kind: "work_order", to: [wo.assignedTo], related: wo.id,

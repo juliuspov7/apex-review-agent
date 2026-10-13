@@ -406,6 +406,34 @@ function Weekly({ api, act, post, setMsg }: { api: Api; act: (f: () => Promise<u
   );
 }
 
+/** Turns the markdown table written by `npm run eval` into a table with traffic-light indicators. */
+function EvalTable({ lines }: { lines: string[] }) {
+  const intro = lines.find((l) => !l.startsWith("|") && l.trim()) ?? "";
+  const rows = lines.filter((l) => l.startsWith("|") && !/^\|[-| ]+\|$/.test(l)).map((l) => l.split("|").slice(1, -1).map((c) => c.trim())).filter((r) => r[0] !== "Metric");
+  const level = (label: string, value: string): "ok" | "warn" | "alert" | "none" => {
+    if (/Tokens|Work orders/.test(label)) return "none";
+    if (/Safety escalation|Safety by/.test(label)) { const m = value.match(/(\d+) \/ (\d+) \/ (\d+)/); return m ? (m[2] === "0" && m[3] === "0" ? "ok" : Number(m[3]) > 0 ? "alert" : "warn") : "none"; }
+    if (/Spam|duplicates/.test(label)) { const m = value.match(/(\d+) \/ (\d+) \/ (\d+)/) ?? value.match(/(\d+)\/(\d+).*false duplicates (\d+)/); return m ? ((label.startsWith("Spam") ? m[2] === "0" && m[3] === "0" : m[1] === m[2] && m[3] === "0") ? "ok" : "warn") : "none"; }
+    const pct = value.match(/(\d+(?:\.\d+)?)%/);
+    if (pct) { const v = Number(pct[1]); return v >= 90 ? "ok" : v >= 75 ? "warn" : "alert"; }
+    const f1 = value.match(/\/ ([01]\.\d+)$/);
+    if (f1) { const v = Number(f1[1]); return v >= 0.9 ? "ok" : v >= 0.75 ? "warn" : "alert"; }
+    return "none";
+  };
+  return (
+    <>
+      <p className="small">{intro}</p>
+      <div className="scroll"><table>
+        <thead><tr><th>Metric</th><th>Result</th></tr></thead>
+        <tbody>{rows.map((r, i) => { const l = level(r[0], r[1]); return (
+          <tr key={i}><td>{r[0]}</td><td><span className={`pill ${l}`}>{l === "ok" ? "✓ " : l === "warn" ? "▲ " : l === "alert" ? "✕ " : ""}{r[1]}</span></td></tr>
+        ); })}</tbody>
+      </table></div>
+      <p className="small">Green ≥ 90 % (or no safety misses / false alarms), amber 75–90 %, red below. Reference labels were written by hand, so treat them as an estimate, not a guarantee.</p>
+    </>
+  );
+}
+
 function Quality({ api }: { api: Api }) {
   const u = api.state.usage;
   const nRev = Object.values(api.state.reviews).filter((r) => r.analysis).length;
@@ -415,7 +443,7 @@ function Quality({ api }: { api: Api }) {
       <div className="card">
         <h2>Classification quality</h2>
         <div className="sub">Measured on all 100 sample reviews against labels written by hand (data/gold.txt). Run again with <code>npm run eval</code>.</div>
-        {api.evalSummary ? <pre style={{ whiteSpace: "pre-wrap", font: "inherit" }}>{api.evalSummary.lines.join("\n")}</pre> : <p className="small">No evaluation file yet.</p>}
+        {api.evalSummary ? <EvalTable lines={api.evalSummary.lines} /> : <p className="small">No evaluation file yet.</p>}
       </div>
       <div className="card">
         <h2>Cost (measured in this demo)</h2>
