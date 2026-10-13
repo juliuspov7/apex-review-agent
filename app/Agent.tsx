@@ -1,5 +1,5 @@
 "use client";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import type { Review, State, WorkOrder } from "@/lib/types";
 import { weekly, weeklyText } from "@/lib/weekly";
 
@@ -29,9 +29,17 @@ export default function Agent() {
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [hotel, setHotel] = useState("All");
 
+  const [loadError, setLoadError] = useState("");
+  const [saving, setSaving] = useState(false);
   const load = useCallback(async () => {
-    const r = await fetch("/api/state", { cache: "no-store" });
-    if (r.ok) setApi(await r.json());
+    try {
+      const r = await fetch("/api/state", { cache: "no-store" });
+      if (!r.ok) throw new Error(`The server answered ${r.status}`);
+      setApi(await r.json());
+      setLoadError("");
+    } catch (e) {
+      setLoadError((e as Error).message || "Network error");
+    }
   }, []);
   useEffect(() => {
     load();
@@ -66,8 +74,10 @@ export default function Agent() {
 
   async function act(fn: () => Promise<unknown>) {
     setMsg(null);
+    setSaving(true);
     try { await fn(); } catch (e) { setMsg({ ok: false, text: (e as Error).message }); window.scrollTo({ top: 0, behavior: "smooth" }); }
-    load();
+    await load();
+    setSaving(false);
   }
 
   const st = api?.state;
@@ -78,7 +88,7 @@ export default function Agent() {
   const inScope = (h: string) => (hotel === "All" || h === hotel) && (!me || me.hotel === h || false);
   const visHotel = (h: string) => (me ? me.hotel === h : hotel === "All" || hotel === h);
 
-  if (!api || !st) return <div className="wrap"><p style={{ marginTop: 40 }}>Loading…</p></div>;
+  if (!api || !st) return <Skeleton failed={loadError || undefined} retry={() => { setLoadError(""); load(); }} />;
 
   // everything the user sees is limited to the hotel they act for (HQ: all hotels or the chosen one)
   const rv = reviews.filter((r) => visHotel(r.hotel));
@@ -107,7 +117,7 @@ export default function Agent() {
         <div className="wrap">
           <img src="/apex-logo.svg" alt="Apex Alliance" className="logo" />
           <h1>Guest review agent</h1>
-          <div className="status"><span>AI: {api.model}</span><span>Cost so far: ${st.usage.costUsd.toFixed(3)} ({st.usage.calls} calls)</span></div>
+          <div className="status"><span>AI: {api.model}</span><span>Cost so far: ${st.usage.costUsd.toFixed(3)} ({st.usage.calls} calls)</span>{saving && <span className="saving"><Spinner small /> Saving…</span>}</div>
           <div className="sp" />
           <label className="status" style={{ gap: 8, alignItems: "center" }}>
             Acting as (demo simulation, no real sign-in)
@@ -145,12 +155,12 @@ export default function Agent() {
             const info = st.batches[b];
             return (
               <button key={b} className="btn" disabled={!!busy} onClick={() => run(b)}>
-                {busy === b ? "Processing…" : info ? `↻ Re-check ${b} (loaded: ${info.newRows} new)` : `⬇ Load ${b}`}
+                {busy === b ? <><Spinner small /> Processing…</> : info ? `↻ Re-check ${b} (loaded: ${info.newRows} new)` : `⬇ Load ${b}`}
               </button>
             );
           })}
           <button className="btn" disabled={!!busy || counts.queued === 0} onClick={() => run()}>
-            {busy === "queue" ? "Processing…" : `Process queue (${counts.queued})`}
+            {busy === "queue" ? <><Spinner small /> Processing…</> : `Process queue (${counts.queued})`}
           </button>
           <label className="btn" style={{ cursor: "pointer" }}>
             ⬆ Upload CSV
@@ -168,6 +178,12 @@ export default function Agent() {
           }}>⟲ Reset demo</button>
           <span className="small">Only review ids not seen before are analysed – re-loading a file never creates double work.</span>
         </div>}
+        {busy && (
+          <div className="progress" role="status">
+            <Spinner small /> <b>{busy === "queue" ? "Processing the queue" : `Loading ${busy}`}</b> – the AI is reading the reviews, removing personal data and creating work orders. This takes about 10–40 seconds; the page updates by itself.
+            <span className="progress-bar" />
+          </div>
+        )}
 
         <div className="tabs" style={{ overflowX: "auto" }}>
           {([["overview", "Overview"], ["approvals", `Approvals (${pending.length})`], ["orders", `Work orders (${openOrders.length})`], ["reviews", `Reviews (${rv.length})`], ["outbox", `Outbox (${outboxS.length})`], ["log", "Action log"], ["weekly", "Weekly"], ["quality", "Quality & cost"]] as [Tab, string][]).map(([k, l]) => (
@@ -185,7 +201,7 @@ export default function Agent() {
               </label>
             </div>
           )}
-          {tab === "overview" && <Overview counts={counts} pending={pending.length} openOrders={openOrders.length} openSafety={openSafety} st={stS} reviews={rv} setTab={setTab} />}
+          {tab === "overview" && <Overview counts={counts} pending={pending.length} openOrders={openOrders.length} openSafety={openSafety} st={stS} reviews={rv} orders={ord} setTab={setTab} empty={rv.length === 0 && counts.queued === 0} />}
           {tab === "approvals" && <Approvals items={pending} actor={actor} me={me} act={act} post={post} routing={api.routing} done={rv.filter((r) => r.draft && r.draft.status !== "pending")} />}
           {tab === "orders" && <Orders orders={ord} actor={actor} act={act} post={post} routing={api.routing} scope={Object.keys(routingS)} />}
           {tab === "reviews" && <Reviews reviews={rv} />}
@@ -206,13 +222,77 @@ function outboxHotel(o: State["outbox"][number], st: State, routing: Api["routin
   return Object.keys(routing).find((h) => o.to.includes(routing[h].gm) || o.to.includes(routing[h].engineer)) ?? "";
 }
 
-function Overview({ counts, pending, openOrders, openSafety, st, reviews, setTab }: { counts: Record<string, number>; pending: number; openOrders: number; openSafety: WorkOrder[]; st: State; reviews: Review[]; setTab: (t: Tab) => void }) {
+function Spinner({ small }: { small?: boolean }) {
+  return <span className={`spinner${small ? " sm" : ""}`} role="status" aria-label="Loading" />;
+}
+
+function Empty({ icon, title, hint }: { icon: string; title: string; hint?: string }) {
+  return (
+    <div className="empty">
+      <div className="empty-ico">{icon}</div>
+      <b>{title}</b>
+      {hint && <span>{hint}</span>}
+    </div>
+  );
+}
+
+function Skeleton({ failed, retry }: { failed?: string; retry?: () => void }) {
+  if (failed) {
+    return (
+      <div className="wrap" style={{ marginTop: 40 }}>
+        <Empty icon="⚠" title="The agent could not load" hint={failed} />
+        {retry && <p style={{ textAlign: "center", marginTop: 12 }}><button className="btn" onClick={retry}>↻ Try again</button></p>}
+      </div>
+    );
+  }
+  return (
+    <div className="wrap" style={{ marginTop: 24 }} aria-busy="true">
+      <div className="skel" style={{ height: 70, marginBottom: 14 }} />
+      <div className="skel" style={{ height: 44, width: 520, marginBottom: 14 }} />
+      <div className="grid tiles">{[0, 1, 2, 3, 4].map((i) => <div key={i} className="skel" style={{ height: 96 }} />)}</div>
+      <div className="skel" style={{ height: 260, marginTop: 12 }} />
+      <p className="small" style={{ textAlign: "center", marginTop: 14 }}><Spinner small /> Loading the agent…</p>
+    </div>
+  );
+}
+
+const CAT_ICON: Record<string, string> = {
+  "Technical – HVAC": "🌡", "Technical – Water": "💧", "Technical – Electrical / Safety": "⚡", "Technical – Lifts": "🛗",
+  "Technical – IT / TV / Wi-Fi": "📶", "Technical – Building": "🏢", Housekeeping: "🧹", "F&B": "🍽", "Front office / Service": "🛎", Other: "•",
+};
+const SENT_DOT: Record<string, string> = { positive: "ok", negative: "alert", mixed: "warn", neutral: "none" };
+
+function Chip({ children, tone = "none" }: { children: React.ReactNode; tone?: "none" | "ok" | "warn" | "alert" }) {
+  return <span className={`tag ${tone}`}>{children}</span>;
+}
+
+function Overview({ counts, pending, openOrders, openSafety, st, reviews, orders, setTab, empty }: { counts: Record<string, number>; pending: number; openOrders: number; openSafety: WorkOrder[]; st: State; reviews: Review[]; orders: WorkOrder[]; setTab: (t: Tab) => void; empty: boolean }) {
   const tile = (label: string, val: string | number, meta: string, tab?: Tab, cls = "") => (
     <div className={`card tile ${cls}`} style={{ cursor: tab ? "pointer" : "default" }} onClick={() => tab && setTab(tab)}>
       <div className="lbl">{label}</div><div className="val">{val}</div><div className="meta">{meta}</div>
     </div>
   );
   const last = st.log.slice(-6).reverse();
+  if (empty) return <Empty icon="📥" title="No reviews yet" hint="Press “Load batch_01.csv” above to collect and analyse the first reviews." />;
+
+  // pipeline numbers
+  const analysed = reviews.filter((r) => r.analysis && r.status !== "spam").length;
+  const drafted = reviews.filter((r) => r.draft).length;
+  const approved = reviews.filter((r) => r.draft?.status === "approved").length;
+  const steps: { n: number; label: string; sub: string; tab: Tab; hot?: boolean }[] = [
+    { n: counts.total, label: "Collected", sub: `${counts.dup} duplicate · ${counts.spam} spam`, tab: "reviews" },
+    { n: analysed, label: "Analysed by AI", sub: `${counts.queued} waiting`, tab: "reviews" },
+    { n: orders.length, label: "Work orders", sub: `${openSafety.length} safety open`, tab: "orders" },
+    { n: drafted, label: "Replies drafted", sub: `${pending} waiting for GM`, tab: "approvals", hot: pending > 0 },
+    { n: approved, label: "Approved & released", sub: "by the hotel GM", tab: "outbox" },
+  ];
+
+  // complaints per category (one count per review)
+  const cat = new Map<string, number>();
+  for (const r of reviews) for (const c of new Set(r.analysis?.issues.map((i) => i.category) ?? [])) cat.set(c, (cat.get(c) ?? 0) + 1);
+  const cats = [...cat.entries()].sort((a, b) => b[1] - a[1]);
+  const max = Math.max(1, ...cats.map((c) => c[1]));
+
   return (
     <div className="grid">
       <div className="grid tiles" style={{ margin: 0 }}>
@@ -222,13 +302,45 @@ function Overview({ counts, pending, openOrders, openSafety, st, reviews, setTab
         {tile("Open safety cases", openSafety.length, "escalated immediately", "orders")}
         {tile("Need a person to look", counts.review, "AI failed or disagreed with safety check", "reviews")}
       </div>
+
       <div className="card">
-        <h2>What the agent did last</h2>
-        <div className="sub">Plain-English action log (full list in “Action log”).</div>
-        {last.length === 0 ? <p className="small">Nothing yet – load a source file above.</p> : last.map((l, i) => <p key={i} style={{ margin: "6px 0" }}><span className="small">{fmtT(l.ts)} · {l.actor}</span><br />{l.text}</p>)}
+        <h2>From review to action</h2>
+        <div className="sub">What happened to the reviews in this view. Click a step to open it.</div>
+        <div className="pipe">
+          {steps.map((s, i) => (
+            <div key={s.label} className="pipe-wrap">
+              <button className={`pipe-step ${s.hot ? "hot" : ""}`} onClick={() => setTab(s.tab)}>
+                <span className="pipe-n">{s.n}</span>
+                <span className="pipe-l">{s.label}</span>
+                <span className="pipe-s">{s.sub}</span>
+              </button>
+              {i < steps.length - 1 && <span className="pipe-arrow">→</span>}
+            </div>
+          ))}
+        </div>
       </div>
-      <div className="card small">
-        <b>How it works:</b> collect new reviews → remove contact data → AI classifies (language, sentiment, category, urgency, safety) and drafts a reply → keyword safety check runs alongside → work orders are created or grouped and routed → GM approves replies → weekly summary. Reviews in this view: {reviews.length}.
+
+      <div className="grid twocol">
+        <div className="card">
+          <h2>Complaints by category</h2>
+          <div className="sub">Number of reviews that mention each category.</div>
+          {cats.length === 0 ? <p className="small">No complaints found yet.</p> : (
+            <div className="bars">
+              {cats.map(([c, n]) => (
+                <div key={c} className="bar-row">
+                  <span className="bar-label">{CAT_ICON[c] ?? "•"} {short(c)}</span>
+                  <span className="bar-track"><span className="bar-fill" style={{ width: `${(n / max) * 100}%` }} /></span>
+                  <span className="bar-num">{n}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        <div className="card">
+          <h2>What the agent did last</h2>
+          <div className="sub">Plain-English action log (full list in “Action log”).</div>
+          {last.length === 0 ? <p className="small">Nothing yet.</p> : last.map((l, i) => <p key={i} style={{ margin: "6px 0" }}><span className="small">{fmtT(l.ts)} · {l.actor}</span><br />{l.text}</p>)}
+        </div>
       </div>
     </div>
   );
@@ -239,26 +351,35 @@ function Approvals({ items, actor, me, act, post, routing, done }: { items: Revi
   return (
     <div className="grid">
       {!actor && <div className="banner warn" style={{ margin: 0 }}>Choose a GM in “Acting as” (top right) to approve or reject replies. HQ view is read-only.</div>}
-      {items.length === 0 && <p className="small">No replies waiting.</p>}
+      {items.length === 0 && <Empty icon="✓" title="No replies waiting" hint="Every drafted reply has been approved or rejected." />}
       {items.map((r) => {
         const can = actor === routing[r.hotel].gm;
         const text = edits[r.id] ?? render(r, r.draft!.text);
+        const safety = r.analysis?.issues.some((i) => i.safety_type !== "none");
         return (
-          <div className="card" key={r.id}>
-            <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
-              <b>{r.id}</b><span className="pill none">{r.hotel}</span><span className="pill none">{r.source}</span>
-              <span className="small">{r.rating5 ?? "?"}/5 · {r.analysis?.language.toUpperCase()} · {r.analysis?.sentiment}</span>
-              {r.analysis?.issues.some((i) => i.safety_type !== "none") && <span className="pill alert">⚠ safety</span>}
-              <span className="small">Approver: {routing[r.hotel].gm}</span>
+          <div className={`card appr ${safety ? "is-safety" : ""}`} key={r.id}>
+            <div className="appr-review">
+              <div className="appr-chips">
+                <b>{r.id}</b><Chip>{r.hotel}</Chip><Chip>{r.source}</Chip>
+                <Chip>{r.rating5 ?? "?"}/5</Chip>
+                <Chip>{(r.analysis?.language ?? "").toUpperCase()}</Chip>
+                <Chip tone={r.analysis?.sentiment === "positive" ? "ok" : r.analysis?.sentiment === "negative" ? "alert" : "warn"}>{r.analysis?.sentiment}</Chip>
+                {safety && <Chip tone="alert">⚠ safety</Chip>}
+              </div>
+              <p className="appr-title">{r.title}</p>
+              <p className="appr-text">{r.text}</p>
+              <div className="appr-issues">
+                {r.analysis?.issues.map((i, k) => <Chip key={k} tone={i.safety_type !== "none" ? "alert" : "none"}>{CAT_ICON[i.category] ?? "•"} {short(i.category)}</Chip>)}
+              </div>
             </div>
-            <p style={{ margin: "10px 0 4px" }}><b>{r.title}</b></p>
-            <p style={{ margin: "0 0 10px", color: "var(--text-2)" }}>{r.text}</p>
-            <div className="small" style={{ marginBottom: 4 }}>Drafted reply (in the guest&apos;s language – editable)</div>
-            <textarea className="ta" value={text} onChange={(e) => setEdits({ ...edits, [r.id]: e.target.value })} rows={6} />
-            <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-              <button className="btn primary2" disabled={!can} title={can ? "" : "Only the GM of this hotel can approve"} onClick={() => act(() => post("/api/draft", { id: r.id, action: "approve", actor, text: edits[r.id] ? edits[r.id].replace(guest(r), "{{GUEST}}") : undefined }))}>✓ Approve &amp; publish</button>
-              <button className="btn" disabled={!can} onClick={() => act(() => post("/api/draft", { id: r.id, action: "reject", actor }))}>✕ Reject</button>
-              {!can && actor && <span className="small" style={{ alignSelf: "center" }}>You are {me?.role} of {me?.hotel}; this needs the GM of {r.hotel}.</span>}
+            <div className="appr-reply">
+              <div className="small" style={{ marginBottom: 4 }}>Drafted reply in the guest&apos;s language · editable · approver: {routing[r.hotel].gm}</div>
+              <textarea className="ta" value={text} onChange={(e) => setEdits({ ...edits, [r.id]: e.target.value })} rows={8} />
+              <div style={{ display: "flex", gap: 8, marginTop: 8, flexWrap: "wrap" }}>
+                <button className="btn primary2" disabled={!can} title={can ? "" : "Only the GM of this hotel can approve"} onClick={() => act(() => post("/api/draft", { id: r.id, action: "approve", actor, text: edits[r.id] ? edits[r.id].replace(guest(r), "{{GUEST}}") : undefined }))}>✓ Approve &amp; publish</button>
+                <button className="btn" disabled={!can} onClick={() => act(() => post("/api/draft", { id: r.id, action: "reject", actor }))}>✕ Reject</button>
+                {!can && actor && <span className="small" style={{ alignSelf: "center" }}>You are {me?.role} of {me?.hotel}; this needs the GM of {r.hotel}.</span>}
+              </div>
             </div>
           </div>
         );
@@ -276,71 +397,88 @@ function Approvals({ items, actor, me, act, post, routing, done }: { items: Revi
 function Orders({ orders, actor, act, post, routing, scope }: { orders: WorkOrder[]; actor: string; act: (f: () => Promise<unknown>) => void; post: (u: string, b: unknown) => Promise<unknown>; routing: Api["routing"]; scope: string[] }) {
   const [show, setShow] = useState<"open" | "all">("open");
   const list = orders.filter((o) => show === "all" || o.status !== "closed");
+  const byHotel = new Map<string, WorkOrder[]>();
+  for (const o of list) byHotel.set(o.hotel, [...(byHotel.get(o.hotel) ?? []), o]);
+  const hotelsSorted = [...byHotel.entries()].sort((a, b) => b[1].filter((o) => o.safety).length - a[1].filter((o) => o.safety).length || a[0].localeCompare(b[0]));
+  const tone = (o: WorkOrder) => (o.status === "closed" ? "closed" : o.priority === "P1 safety" ? "p1" : o.priority === "P2" ? "p2" : "p3");
   return (
-    <div className="card">
-      <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 8 }}>
-        <h2>Work orders</h2>
-        <div style={{ display: "flex", gap: 8 }}><a className="btn" href={`/api/export?hotels=${scope.length < 12 ? scope.join(",") : ""}${show === "all" ? "&all=1" : ""}`} title="Download the list as an Excel file (open orders, or all if “All” is selected)">⬇ Export to Excel</a><div className="seg"><button className={show === "open" ? "on" : ""} onClick={() => setShow("open")}>Open</button><button className={show === "all" ? "on" : ""} onClick={() => setShow("all")}>All</button></div></div>
+    <div className="grid">
+      <div className="card" style={{ padding: "12px 16px" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: 8, alignItems: "center" }}>
+          <div>
+            <h2 style={{ margin: 0 }}>Work orders</h2>
+            <div className="sub" style={{ margin: 0 }}>Repeated reports of the same problem at the same hotel are grouped into one work order. The agent never closes anything.</div>
+          </div>
+          <div style={{ display: "flex", gap: 8 }}><a className="btn" href={`/api/export?hotels=${scope.length < 12 ? scope.join(",") : ""}${show === "all" ? "&all=1" : ""}`} title="Download the list as an Excel file (open orders, or all if “All” is selected)">⬇ Export to Excel</a><div className="seg"><button className={show === "open" ? "on" : ""} onClick={() => setShow("open")}>Open</button><button className={show === "all" ? "on" : ""} onClick={() => setShow("all")}>All</button></div></div>
+        </div>
       </div>
-      <div className="sub">Repeated reports of the same problem at the same hotel are grouped into one work order (see “reports”). The agent never closes anything.</div>
-      <div className="scroll">
-        <table>
-          <thead><tr><th>ID</th><th>Priority</th><th>Hotel</th><th>Category</th><th>What guests report</th><th className="n">Reports</th><th>Rooms</th><th>Assigned</th><th>Status</th><th></th></tr></thead>
-          <tbody>
-            {list.map((o) => {
+      {list.length === 0 && <Empty icon="🛠" title={show === "open" ? "No open work orders" : "No work orders yet"} hint="Technical complaints in reviews create work orders automatically." />}
+      {hotelsSorted.map(([h, os]) => (
+        <section key={h}>
+          <h3 className="wo-hotel">{h} <span>· {routing[h]?.country} · {os.filter((o) => o.status !== "closed").length} open{os.some((o) => o.safety && o.status !== "closed") ? " · " : ""}{os.some((o) => o.safety && o.status !== "closed") && <b className="safe">⚠ safety</b>}</span></h3>
+          <div className="wo-grid">
+            {os.map((o) => {
               const row = routing[o.hotel];
               const may = actor && (actor === row.gm || actor === row.engineer || actor === row.housekeeping);
               return (
-                <tr key={o.id}>
-                  <td><b>{o.id}</b></td>
-                  <td><span className={`pill ${o.priority === "P1 safety" ? "alert" : o.priority === "P2" ? "warn" : "none"}`}>{o.priority}</span></td>
-                  <td>{o.hotel}</td><td>{short(o.category)}</td>
-                  <td style={{ maxWidth: 420 }}>{o.summary.map((s, i) => <div key={i} className="small" style={{ color: "var(--text)" }}>{s}</div>)}</td>
-                  <td className="n">{o.reviewIds.length}</td><td>{o.rooms.join(", ") || "–"}</td><td className="small">{o.assignedTo}</td>
-                  <td><span className={`pill ${o.status === "closed" ? "ok" : "none"}`}>{o.status.replace("_", " ")}</span>{o.closeNote && <div className="small">{o.closeNote}</div>}</td>
-                  <td style={{ whiteSpace: "nowrap" }}>
-                    {o.status === "open" && <button className="btn" disabled={!may} onClick={() => act(() => post("/api/wo", { id: o.id, action: "start", actor }))}>Start</button>}{" "}
-                    {o.status !== "closed" && <button className="btn" disabled={!may} onClick={() => {
-                      let note: string | null = "";
-                      if (o.safety) {
-                        note = prompt("Safety case – what was checked or repaired? (GM confirmation, min. 10 characters)");
-                        if (note === null) return; // cancelled
-                        if (note.trim().length < 10) {
-                          alert("A safety case cannot be closed without a note (at least 10 characters) describing what was checked or repaired. The case stays open.");
-                          return;
+                <div key={o.id} className={`wo ${tone(o)}`}>
+                  <div className="wo-head">
+                    <b>{o.id}</b>
+                    <span className={`pill ${o.priority === "P1 safety" ? "alert" : o.priority === "P2" ? "warn" : "none"}`}>{o.priority}</span>
+                    <Chip>{CAT_ICON[o.category] ?? "•"} {short(o.category)}</Chip>
+                    {o.reviewIds.length > 1 && <span className="tag hot">×{o.reviewIds.length} reports</span>}
+                    <span className={`pill ${o.status === "closed" ? "ok" : "none"}`} style={{ marginLeft: "auto" }}>{o.status.replace("_", " ")}</span>
+                  </div>
+                  <ul className="wo-lines">{o.summary.map((s, i) => <li key={i}>{s}</li>)}</ul>
+                  <div className="wo-foot">
+                    <span className="small">{o.rooms.length ? `Rooms ${o.rooms.join(", ")} · ` : ""}{o.assignedTo.split("@")[0]}</span>
+                    <span style={{ whiteSpace: "nowrap" }}>
+                      {o.status === "open" && <button className="btn" disabled={!may} onClick={() => act(() => post("/api/wo", { id: o.id, action: "start", actor }))}>Start</button>}{" "}
+                      {o.status !== "closed" && <button className="btn" disabled={!may} onClick={() => {
+                        let note: string | null = "";
+                        if (o.safety) {
+                          note = prompt("Safety case – what was checked or repaired? (GM confirmation, min. 10 characters)");
+                          if (note === null) return; // cancelled
+                          if (note.trim().length < 10) {
+                            alert("A safety case cannot be closed without a note (at least 10 characters) describing what was checked or repaired. The case stays open.");
+                            return;
+                          }
                         }
-                      }
-                      act(() => post("/api/wo", { id: o.id, action: "close", actor, note }));
-                    }}>Close</button>}
-                  </td>
-                </tr>
+                        act(() => post("/api/wo", { id: o.id, action: "close", actor, note }));
+                      }}>Close</button>}
+                    </span>
+                  </div>
+                  {o.closeNote && <div className="small" style={{ marginTop: 4 }}>Closed: {o.closeNote}</div>}
+                </div>
               );
             })}
-          </tbody>
-        </table>
-      </div>
-      {!actor && <p className="small">Choose who you are (top right) to start or close work orders.</p>}
+          </div>
+        </section>
+      ))}
+      {!actor && list.length > 0 && <p className="small">Choose who you are (top right) to start or close work orders.</p>}
     </div>
   );
 }
 
 function Reviews({ reviews }: { reviews: Review[] }) {
   const [open, setOpen] = useState("");
+  if (reviews.length === 0) return <Empty icon="💬" title="No reviews in this view" hint="Load a source file or choose another hotel." />;
   return (
     <div className="card scroll">
       <table>
         <thead><tr><th>ID</th><th>Date</th><th>Hotel</th><th>Source</th><th>Rating</th><th>Lang</th><th>Sentiment</th><th>Categories</th><th>Status</th></tr></thead>
         <tbody>
           {reviews.map((r) => (
-            <>
-              <tr key={r.id} className="click" onClick={() => setOpen(open === r.id ? "" : r.id)}>
+            <React.Fragment key={r.id}>
+              <tr className="click" onClick={() => setOpen(open === r.id ? "" : r.id)}>
                 <td><b>{r.id}</b></td><td className="small">{r.receivedAt.slice(5, 10)}</td><td>{r.hotel}</td><td>{r.source}</td><td>{r.rating5 ?? "?"}/5</td>
-                <td>{r.analysis?.language ?? "–"}</td><td>{r.analysis?.sentiment ?? "–"}</td>
-                <td>{[...new Set(r.analysis?.issues.map((i) => short(i.category)))].join(", ") || "–"}{r.analysis?.issues.some((i) => i.safety_type !== "none") && <span className="pill alert" style={{ marginLeft: 6 }}>safety</span>}</td>
+                <td>{(r.analysis?.language ?? "–").toUpperCase()}</td>
+                <td>{r.analysis ? <span className="sent"><i className={`dot ${SENT_DOT[r.analysis.sentiment]}`} />{r.analysis.sentiment}</span> : "–"}</td>
+                <td>{[...new Set(r.analysis?.issues.map((i) => i.category))].map((c) => <Chip key={c}>{CAT_ICON[c] ?? "•"} {short(c)}</Chip>)}{!r.analysis?.issues.length && "–"}{r.analysis?.issues.some((i) => i.safety_type !== "none") && <Chip tone="alert">safety</Chip>}</td>
                 <td><span className={`pill ${r.status === "processed" ? "ok" : r.status === "needs_review" || r.status === "error" ? "alert" : "none"}`}>{r.status.replace("_", " ")}</span>{r.duplicateOf && <span className="small"> of {r.duplicateOf}</span>}</td>
               </tr>
               {open === r.id && (
-                <tr key={r.id + "x"}><td colSpan={9} style={{ background: "var(--bg)" }}>
+                <tr><td colSpan={9} style={{ background: "var(--bg)" }}>
                   <p style={{ margin: "4px 0" }}><b>{r.title}</b> – {r.text}</p>
                   {r.pii.length > 0 && <p className="small">Removed before storing and before AI: {r.pii.join(", ")}.</p>}
                   {r.analysis && <p className="small">Agent reasoning: {r.analysis.reason}</p>}
@@ -349,7 +487,7 @@ function Reviews({ reviews }: { reviews: Review[] }) {
                   {r.error && <p className="small" style={{ color: "var(--alert-fg)" }}>Error: {r.error}</p>}
                 </td></tr>
               )}
-            </>
+            </React.Fragment>
           ))}
         </tbody>
       </table>
@@ -357,22 +495,39 @@ function Reviews({ reviews }: { reviews: Review[] }) {
   );
 }
 
+const KIND_ICON: Record<string, string> = { work_order: "🛠", safety_escalation: "⚠", reply: "💬", weekly: "📊" };
+
 function Outbox({ items }: { items: State["outbox"] }) {
   const [open, setOpen] = useState("");
   return (
     <div className="card">
       <h2>Outbox (simulated)</h2>
       <div className="sub">Work-order e-mails, urgent safety alerts, approved public replies and weekly summaries. The demo does not contact real people: addresses are test addresses.</div>
-      {items.length === 0 && <p className="small">Empty.</p>}
+      {items.length === 0 && <Empty icon="📭" title="Nothing in the outbox yet" hint="Work-order e-mails and approved replies appear here." />}
       {items.map((m) => (
         <div key={m.id} style={{ borderTop: "1px solid var(--line)", padding: "8px 0", cursor: "pointer" }} onClick={() => setOpen(open === m.id ? "" : m.id)}>
-          <span className={`pill ${m.kind === "safety_escalation" ? "alert" : m.kind === "reply" ? "ok" : "none"}`}>{m.kind.replace("_", " ")}</span>{" "}
+          <span className={`pill ${m.kind === "safety_escalation" ? "alert" : m.kind === "reply" ? "ok" : "none"}`}>{KIND_ICON[m.kind]} {m.kind.replace("_", " ")}</span>{" "}
           <b>{m.subject}</b> <span className="small">→ {m.to.join(", ")} · {fmtT(m.createdAt)}</span>
           {open === m.id && <pre style={{ whiteSpace: "pre-wrap", font: "inherit", color: "var(--text-2)", margin: "8px 0 0" }}>{m.body}</pre>}
         </div>
       ))}
     </div>
   );
+}
+
+function logIcon(l: State["log"][number]): { icon: string; tone: string } {
+  const t = l.text;
+  if (/SAFETY ESCALATION|UPGRADED to a safety/.test(t)) return { icon: "⚠", tone: "alert" };
+  if (/APPROVED/.test(t)) return { icon: "✓", tone: "ok" };
+  if (/REJECTED/.test(t)) return { icon: "✕", tone: "none" };
+  if (/CLOSED/.test(t)) return { icon: "🔒", tone: "ok" };
+  if (/duplicate of/.test(t)) return { icon: "⧉", tone: "none" };
+  if (/spam/.test(t)) return { icon: "⊘", tone: "none" };
+  if (/ADDED to/.test(t)) return { icon: "＋", tone: "warn" };
+  if (/Work order .* created/.test(t)) return { icon: "🛠", tone: "none" };
+  if (/Reply to guest drafted/.test(t)) return { icon: "✎", tone: "none" };
+  if (/failed/.test(t)) return { icon: "!", tone: "alert" };
+  return { icon: l.actor === "agent" ? "🤖" : "👤", tone: "none" };
 }
 
 function Log({ st }: { st: State }) {
@@ -382,10 +537,22 @@ function Log({ st }: { st: State }) {
     <div className="card">
       <h2>Action log</h2>
       <div className="sub">Every decision the agent or a person made, in plain English. Nothing is hidden or edited afterwards.</div>
-      <input className="ta" style={{ height: 36, marginBottom: 10 }} placeholder="Search (review id, work order, hotel, person…)" value={q} onChange={(e) => setQ(e.target.value)} />
-      <div className="scroll"><table><tbody>
-        {rows.slice(0, 300).map((l, i) => <tr key={i}><td className="small" style={{ whiteSpace: "nowrap" }}>{fmtT(l.ts)}</td><td className="small">{l.actor === "agent" ? "🤖 agent" : "👤 " + l.actor}</td><td>{l.text}</td></tr>)}
-      </tbody></table></div>
+      <input className="ta" style={{ height: 36, marginBottom: 12 }} placeholder="Search (review id, work order, hotel, person…)" value={q} onChange={(e) => setQ(e.target.value)} />
+      {rows.length === 0 && <Empty icon="🧾" title={q ? "No log entries match your search" : "The log is empty"} hint={q ? "Try another word." : "Entries appear as soon as the agent processes reviews."} />}
+      <ol className="timeline">
+        {rows.slice(0, 300).map((l, i) => {
+          const { icon, tone } = logIcon(l);
+          return (
+            <li key={i} className={`tli ${tone}`}>
+              <span className="tli-ico">{icon}</span>
+              <div className="tli-body">
+                <div>{l.text}</div>
+                <div className="small">{fmtT(l.ts)} · {l.actor === "agent" ? "agent" : l.actor}{l.workOrder ? ` · ${l.workOrder}` : ""}{l.review ? ` · ${l.review}` : ""}</div>
+              </div>
+            </li>
+          );
+        })}
+      </ol>
     </div>
   );
 }
@@ -393,6 +560,8 @@ function Log({ st }: { st: State }) {
 function Weekly({ api, act, post, setMsg }: { api: Api; act: (f: () => Promise<unknown>) => void; post: (u: string, b: unknown) => Promise<unknown>; setMsg: (m: { ok: boolean; text: string }) => void }) {
   const [week, setWeek] = useState(api.weeks[api.weeks.length - 1] ?? "");
   const rows = week ? weekly(api.state, week, Object.keys(api.routing).sort()).filter((r) => r.reviews || r.openWorkOrders) : [];
+  const maxIssues = Math.max(1, ...rows.map((r) => r.issueCount));
+  const rateTone = (v: number | null) => (v === null ? "none" : v >= 4 ? "ok" : v >= 3 ? "warn" : "alert");
   return (
     <div className="card">
       <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center", justifyContent: "space-between" }}>
@@ -402,18 +571,23 @@ function Weekly({ api, act, post, setMsg }: { api: Api; act: (f: () => Promise<u
           <button className="btn" disabled={!week} onClick={() => act(async () => { const j = (await post("/api/weekly", { week, hotels: Object.keys(api.routing) })) as { queued: number }; setMsg({ ok: true, text: `${j.queued} weekly summaries queued to the GMs (see Outbox).` }); })}>Queue to GMs</button>
         </div>
       </div>
-      {!week && <p className="small">No reviews loaded yet.</p>}
-      <div className="scroll"><table>
-        <thead><tr><th>Hotel</th><th className="n">Reviews</th><th className="n">Avg rating</th><th>Trend</th><th>Top issues</th><th className="n" title="All work orders that are open today, whichever week they were created">Open WOs (all weeks, now)</th><th className="n" title="Open safety cases today">Safety open (now)</th><th className="n" title="Drafted replies still waiting for approval, for this week's reviews">Replies pending (this week)</th></tr></thead>
-        <tbody>{rows.map((r) => (
-          <tr key={r.hotel} title={weeklyText(r, week)}>
-            <td><b>{r.hotel}</b></td><td className="n">{r.reviews}</td><td className="n">{r.avgRating ?? "–"}</td>
-            <td>{r.avgRating === null || r.prevAvgRating === null ? "–" : r.avgRating > r.prevAvgRating ? "▲ better" : r.avgRating < r.prevAvgRating ? "▼ worse" : "= same"} <span className="small">(prev {r.prevAvgRating ?? "–"})</span></td>
-            <td>{r.topIssues.map((i) => `${short(i.category)} (${i.count})`).join(", ") || "–"}</td>
-            <td className="n">{r.openWorkOrders}</td><td className="n">{r.openSafety || "–"}</td><td className="n">{r.pendingReplies}</td>
-          </tr>
-        ))}</tbody>
-      </table></div>
+      {!week && <Empty icon="📅" title="No reviews loaded yet" hint="The weekly summary appears after the first reviews are analysed." />}
+      {week && rows.length === 0 && <Empty icon="📭" title="Nothing to report for this week" />}
+      {rows.length > 0 && (
+        <div className="scroll"><table>
+          <thead><tr><th>Hotel</th><th className="n">Reviews</th><th style={{ width: 190 }}>Average rating</th><th>Trend</th><th style={{ width: 170 }}>Issue reports</th><th>Top issues</th><th className="n" title="All work orders that are open today, whichever week they were created">Open WOs (all weeks, now)</th><th className="n" title="Open safety cases today">Safety open (now)</th><th className="n" title="Drafted replies still waiting for approval, for this week's reviews">Replies pending (this week)</th></tr></thead>
+          <tbody>{rows.map((r) => (
+            <tr key={r.hotel} title={weeklyText(r, week)}>
+              <td><b>{r.hotel}</b></td><td className="n">{r.reviews}</td>
+              <td>{r.avgRating === null ? "–" : <span className="meter"><span className="meter-track"><span className={`meter-fill ${rateTone(r.avgRating)}`} style={{ width: `${(r.avgRating / 5) * 100}%` }} /></span><b>{r.avgRating}</b>/5</span>}</td>
+              <td className={r.avgRating === null || r.prevAvgRating === null ? "" : r.avgRating > r.prevAvgRating ? "t-ok" : r.avgRating < r.prevAvgRating ? "t-bad" : ""}>{r.avgRating === null || r.prevAvgRating === null ? "–" : r.avgRating > r.prevAvgRating ? "▲ better" : r.avgRating < r.prevAvgRating ? "▼ worse" : "= same"} <span className="small">(prev {r.prevAvgRating ?? "–"})</span></td>
+              <td><span className="meter"><span className="meter-track"><span className="meter-fill none" style={{ width: `${(r.issueCount / maxIssues) * 100}%` }} /></span><b>{r.issueCount}</b></span></td>
+              <td>{r.topIssues.map((i) => `${short(i.category)} (${i.count})`).join(", ") || "–"}</td>
+              <td className="n">{r.openWorkOrders}</td><td className="n">{r.openSafety ? <b style={{ color: "var(--alert-fg)" }}>{r.openSafety}</b> : "–"}</td><td className="n">{r.pendingReplies}</td>
+            </tr>
+          ))}</tbody>
+        </table></div>
+      )}
       <p className="small"><b>Reviews, rating, trend, top issues and pending replies are for the selected week. Open work orders and safety cases are the position today (all weeks), because they stay open until someone closes them.</b> Calculated from the stored data (no AI involved, so no invented numbers). Ratings are normalised to 1–5 (Booking 1–10 ÷ 2). Hover a row for the e-mail text.</p>
     </div>
   );
@@ -442,7 +616,7 @@ function EvalTable({ lines }: { lines: string[] }) {
           <tr key={i}><td>{r[0]}</td><td><span className={`pill ${l}`}>{l === "ok" ? "✓ " : l === "warn" ? "▲ " : l === "alert" ? "✕ " : ""}{r[1]}</span></td></tr>
         ); })}</tbody>
       </table></div>
-      <p className="small">Green ≥ 90 % (or no safety misses / false alarms), amber 75–90 %, red below. Reference labels were written by hand, so treat them as an estimate, not a guarantee.</p>
+      <p className="small">Green ≥ 90 % (or no safety misses / false alarms), amber 75–90 %, red below. Reference labels were drafted with an AI assistant, so treat these figures as an estimate, not a guarantee.</p>
     </>
   );
 }
