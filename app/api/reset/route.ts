@@ -1,5 +1,5 @@
 import { timingSafeEqual } from "crypto";
-import { saveState } from "@/lib/pipeline";
+import { withState } from "@/lib/pipeline";
 import { emptyState } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -10,6 +10,6 @@ export async function POST(req: Request) {
   const expected = process.env.ADMIN_PASSWORD;
   const a = Buffer.from(String(password ?? "")), b = Buffer.from(expected ?? "");
   if (!expected || a.length !== b.length || !timingSafeEqual(a, b)) return Response.json({ error: "Wrong admin password" }, { status: 401 });
-  await saveState(emptyState());
+  await withState((st) => { Object.assign(st, emptyState()); }); // same locking as every other change
   return Response.json({ ok: true });
 }

@@ -60,3 +60,19 @@ test("a GM approval made while a long AI batch is running is not overwritten by 
   assert.equal(st.reviews["RV-2"].status, "processed", "batch result survived");
   assert.equal(st.outbox.filter((m) => m.kind === "reply").length, 1);
 });
+
+test("a reset while an AI batch is in flight is not undone by the late batch result", async () => {
+  await saveState(emptyState());
+  const csv = [
+    "review_id,received_at,source,hotel_id,rating,rating_scale,reviewer_name,title,text",
+    'RV-9,2026-09-01T10:00:00,Google,H03,4,1-5,Anna K.,Slow,"Slow check-in at the reception desk"',
+  ].join("
+");
+  await withState((st) => collect(st, csv, "b.csv"));
+  const late = new Map([["RV-9", { net: null, res: { analysis: { language: "en", sentiment: "negative", spam: false, refers_to_past_stay: false, issues: [], reason: "x", draft_reply: "Dear Anna" }, inTokens: 1, outTokens: 1, costUsd: 0 } }]]);
+  const batch = (async () => { await sleep(60); return withState((st) => applyResults(st, late)); })();
+  await withState((st) => { Object.assign(st, emptyState()); }); // admin reset
+  await batch;
+  const st = await loadState();
+  assert.equal(Object.keys(st.reviews).length, 0, "reset data stayed deleted");
+});
