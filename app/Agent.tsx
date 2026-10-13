@@ -167,7 +167,7 @@ export default function Agent() {
           {tab === "approvals" && <Approvals items={pending} actor={actor} me={me} act={act} post={post} routing={api.routing} done={reviews.filter((r) => r.draft && r.draft.status !== "pending" && visHotel(r.hotel))} />}
           {tab === "orders" && <Orders orders={orders.filter((o) => visHotel(o.hotel))} actor={actor} act={act} post={post} routing={api.routing} />}
           {tab === "reviews" && <Reviews reviews={reviews.filter((r) => visHotel(r.hotel))} />}
-          {tab === "outbox" && <Outbox items={[...st.outbox].reverse().filter((o) => !me || o.to.includes(me.email) || o.related === undefined)} />}
+          {tab === "outbox" && <Outbox items={[...st.outbox].reverse().filter((o) => visHotel(outboxHotel(o, st, api.routing)))} />}
           {tab === "log" && <Log st={st} />}
           {tab === "weekly" && <Weekly api={api} act={act} post={post} setMsg={setMsg} />}
           {tab === "quality" && <Quality api={api} />}
@@ -175,6 +175,13 @@ export default function Agent() {
       </div>
     </>
   );
+}
+
+/** Which hotel does an outbox message belong to? (work order / review / weekly summary recipient) */
+function outboxHotel(o: State["outbox"][number], st: State, routing: Api["routing"]) {
+  if (o.related && st.workOrders[o.related]) return st.workOrders[o.related].hotel;
+  if (o.related && st.reviews[o.related]) return st.reviews[o.related].hotel;
+  return Object.keys(routing).find((h) => o.to.includes(routing[h].gm) || o.to.includes(routing[h].engineer)) ?? "";
 }
 
 function Overview({ counts, pending, openOrders, openSafety, st, reviews, setTab }: { counts: Record<string, number>; pending: number; openOrders: number; openSafety: WorkOrder[]; st: State; reviews: Review[]; setTab: (t: Tab) => void }) {
