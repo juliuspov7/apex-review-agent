@@ -37,7 +37,7 @@ export async function saveState(st: State, etag?: string | null) {
  * a batch is being processed) cannot overwrite each other.
  */
 export async function withState<T>(fn: (st: State) => Promise<T> | T): Promise<T> {
-  for (let attempt = 0; attempt < 8; attempt++) {
+  for (let attempt = 0; attempt < 12; attempt++) {
     const { st, etag } = await loadWithEtag();
     const out = await fn(st);
     try {
@@ -45,7 +45,7 @@ export async function withState<T>(fn: (st: State) => Promise<T> | T): Promise<T
       return out;
     } catch (e) {
       if (!(e instanceof ConflictError)) throw e;
-      await new Promise((r) => setTimeout(r, 150 * (attempt + 1)));
+      await new Promise((r) => setTimeout(r, 100 + Math.random() * 250 * (attempt + 1))); // jitter, so simultaneous writers do not collide again together
     }
   }
   throw new Error("The system is busy, please try again");

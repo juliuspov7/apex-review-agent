@@ -54,7 +54,7 @@ export async function writeStored(name: string, body: Buffer | string, contentTy
         ...(typeof ifMatch === "string" ? { ifMatch } : {}),
       });
     } catch (e) {
-      if (ifMatch !== undefined && /precondition|etag|412|already exists/i.test(`${(e as Error).name} ${(e as Error).message}`)) throw new ConflictError("state changed concurrently");
+      if (ifMatch !== undefined && /precondition|etag|412|409|already exists|conflicting operation|conditional request/i.test(`${(e as Error).name} ${(e as Error).message}`)) throw new ConflictError("state changed concurrently");
       throw e;
     }
     return;

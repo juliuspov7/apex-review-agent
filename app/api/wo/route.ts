@@ -8,6 +8,7 @@ export async function POST(req: Request) {
     await withState((st) => updateWorkOrder(st, id, action, actor, note));
     return Response.json({ ok: true });
   } catch (e) {
-    return Response.json({ error: (e as Error).message }, { status: 403 });
+    const msg = (e as Error).message;
+    return Response.json({ error: msg }, { status: /busy/.test(msg) ? 503 : 403 });
   }
 }
