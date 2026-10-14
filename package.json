@@ -8,7 +8,8 @@
     "start": "next start",
     "test": "node --test tests/pipeline.test.ts tests/concurrency.test.ts",
     "eval": "node --env-file=.env.local scripts/eval.ts",
-    "smoke": "node --env-file=.env.local scripts/smoke.ts"
+    "smoke": "node --env-file=.env.local scripts/smoke.ts",
+    "stability": "node --env-file=.env.local scripts/stability.ts"
   },
   "dependencies": {
     "@vercel/blob": "^2.8.1",
