@@ -121,7 +121,7 @@ export default function Agent() {
       <header className="top">
         <div className="wrap">
           <div className="hdr-left">
-            <img src="/apex-logo.svg" alt="Apex Alliance" className="logo" />
+            <span className="wordmark">Apex</span>
             <h1>Guest review agent</h1>
           </div>
           <div className="chips">

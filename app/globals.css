@@ -223,3 +223,7 @@ header.top .chips { flex: 1 1 auto; min-width: 0; }
 .hotelbar button:hover { border-color: var(--text-3); }
 .hotelbar button.on { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
 .hotelbar .small { margin-left: 6px; }
+
+/* text wordmark instead of a logo */
+.wordmark { font-size: 26px; font-weight: 800; letter-spacing: -.02em; color: var(--accent); line-height: 1; }
+.login-wordmark { font-size: 32px; font-weight: 800; letter-spacing: -.02em; color: var(--accent); justify-self: start; line-height: 1; }
