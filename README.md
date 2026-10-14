@@ -6,7 +6,7 @@ A web application that reads guest reviews, understands them with an AI model, c
 
 - **Live:** https://apex-review-agent.vercel.app (view password is sent separately)
 - The data is synthetic assignment data. Keep this repository private.
-- E-mails, Teams messages and public replies are **simulated** in this demo (see the Outbox tab). Nothing is sent to real people.
+- E-mails, Teams messages and public replies are **simulated** in this demo (see the Outbox tab). Nothing is sent to the real recipients. The one exception is the Outbox “Send test e-mail” button, which e-mails a copy to an address you type in.
 
 ## How it works
 
@@ -114,7 +114,7 @@ npm run eval       # quality and cost on the 100 sample reviews (needs the key)
 
 1. Press **Reset demo** (admin password), then **Load batch_01.csv**. About 80 reviews are analysed in under a minute.
 2. Look at Overview, Approvals and Work orders: safety cases, grouped work orders, drafts in six languages.
-3. Choose “Acting as” a GM (for example `gm.h01@apex-test.example`) and approve a reply. It appears in the Outbox.
+3. Choose “Acting as” a GM (for example `gm.h01@apex-test.example`) and approve a reply. It appears in the Outbox. Open it, type your own e-mail address and press **Send test e-mail** (sent through Resend from the demo address; it may land in spam).
 4. Press **Load batch_02.csv**. Only the 20 new reviews are processed: one duplicate, one spam, repeat reports added to existing work orders, new safety cases escalated.
 5. Open Weekly, Action log and Quality & cost.
 
