@@ -120,18 +120,25 @@ export default function Agent() {
     <>
       <header className="top">
         <div className="wrap">
-          <img src="/apex-logo.svg" alt="Apex Alliance" className="logo" />
-          <h1>Guest review agent</h1>
-          <div className="status"><span>AI: {api.model}</span><span>Cost so far: ${st.usage.costUsd.toFixed(3)} ({st.usage.calls} calls)</span>{saving && <span className="saving"><Spinner small /> Saving…</span>}</div>
-          <div className="sp" />
-          <label className="status" style={{ gap: 8, alignItems: "center" }}>
-            Acting as (demo simulation, no real sign-in)
-            <select value={actor} onChange={(e) => setActor(e.target.value)} style={{ color: "var(--text)" }}>
-              <option value="">HQ – read only</option>
-              {api.actors.map((a) => <option key={a.email} value={a.email}>{a.hotel} · {a.role} · {a.email}</option>)}
-            </select>
-          </label>
-          <button className="btn" onClick={logout} title="End this session">Log out</button>
+          <div className="hdr-left">
+            <img src="/apex-logo.svg" alt="Apex Alliance" className="logo" />
+            <h1>Guest review agent</h1>
+          </div>
+          <div className="chips">
+            <span className="chip2"><i className="dot ok" />AI: {api.model}</span>
+            <span className="chip2">Cost so far ${st.usage.costUsd.toFixed(3)} ({st.usage.calls} calls)</span>
+            {saving && <span className="chip2 saving"><Spinner small /> Saving…</span>}
+          </div>
+          <div className="hdr-actions">
+            <label>
+              <span>Acting as<small>demo simulation, no real sign-in</small></span>
+              <select value={actor} onChange={(e) => setActor(e.target.value)} style={{ color: "var(--text)" }}>
+                <option value="">HQ – read only</option>
+                {api.actors.map((a) => <option key={a.email} value={a.email}>{a.hotel} · {a.role} · {a.email}</option>)}
+              </select>
+            </label>
+            <button className="btn" onClick={logout} title="End this session">Log out</button>
+          </div>
         </div>
       </header>
       <div className="wrap">
