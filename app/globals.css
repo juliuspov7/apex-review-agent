@@ -208,3 +208,11 @@ header.top .chips { flex: 1 1 auto; min-width: 0; }
   header.top .chips { order: 3; flex: 1 1 100%; }
   .hdr-actions { margin-left: auto; }
 }
+
+.srcbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 14px 0; padding: 8px 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; }
+.srcbar > b { font-size: 13px; margin-right: 4px; color: var(--text-2); cursor: help; }
+.btn.sm { padding: 4px 10px; font-size: 13px; }
+.srcbar .btn.sm { background: var(--bg); }
+.srcbar .btn.sm.primary { background: var(--accent); }
+.srcbar .reset { margin-left: auto; color: var(--text-3); background: transparent !important; border-color: transparent; }
+.srcbar .reset:hover { color: #b3261e; border-color: var(--line); }

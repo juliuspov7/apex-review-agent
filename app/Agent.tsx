@@ -162,20 +162,20 @@ export default function Agent() {
         )}
         {msg && <div className={`banner ${msg.ok ? "ok" : "alert"}`} style={{ marginTop: 10 }}>{msg.text}</div>}
 
-        {!me && <div className="bar">
-          <b>Source files</b>
+        {!me && <div className="srcbar">
+          <b title="Only review ids not seen before are analysed. Re-loading a file never creates double work.">Source files</b>
           {api.bundled.map((b) => {
             const info = st.batches[b];
             return (
-              <button key={b} className="btn" disabled={!!busy} onClick={() => run(b)}>
-                {busy === b ? <><Spinner small /> Processing…</> : info ? `Re-check ${b} (loaded: ${info.newRows} new)` : `Load ${b}`}
+              <button key={b} className="btn sm" disabled={!!busy} onClick={() => run(b)} title={info ? `Loaded: ${info.newRows} new reviews. Click to re-check; nothing is processed twice.` : `Load ${b}`}>
+                {busy === b ? <><Spinner small /> Processing…</> : info ? `${b} ✓` : `Load ${b}`}
               </button>
             );
           })}
-          <button className="btn" disabled={!!busy || counts.queued === 0} onClick={() => run()}>
+          <button className={`btn sm ${counts.queued > 0 ? "primary" : ""}`} disabled={!!busy || counts.queued === 0} onClick={() => run()}>
             {busy === "queue" ? <><Spinner small /> Processing…</> : `Process queue (${counts.queued})`}
           </button>
-          <label className="btn" style={{ cursor: "pointer" }}>
+          <label className="btn sm" style={{ cursor: "pointer" }}>
             Upload CSV
             <input type="file" accept=".csv" hidden onChange={(e) => {
               const f = e.target.files?.[0];
@@ -184,12 +184,11 @@ export default function Agent() {
               e.target.value = "";
             }} />
           </label>
-          <button className="btn" disabled={!!busy} title="Admin only: deletes all reviews, work orders, drafts and the log so the demo can be run again" onClick={() => {
+          <button className="btn sm reset" disabled={!!busy} title="Admin only: deletes all reviews, work orders, drafts and the log so the demo can be run again" onClick={() => {
             const password = prompt("Reset ALL agent data (reviews, work orders, drafts, log)?\nEnter the admin password to confirm:");
             if (!password) return;
             act(async () => { await post("/api/reset", { password }); setMsg({ ok: true, text: "All agent data was reset. Load batch_01.csv to start again." }); });
           }}>Reset demo</button>
-          <span className="small">Only review ids not seen before are analysed – re-loading a file never creates double work.</span>
         </div>}
         {busy && (
           <div className="progress" role="status">
@@ -218,7 +217,7 @@ export default function Agent() {
           {tab === "approvals" && <Approvals items={pending} actor={actor} me={me} act={act} post={post} routing={api.routing} done={rv.filter((r) => r.draft && r.draft.status !== "pending")} />}
           {tab === "orders" && <Orders orders={ord} actor={actor} act={act} post={post} routing={api.routing} scope={Object.keys(routingS)} />}
           {tab === "reviews" && <Reviews reviews={rv} />}
-          {tab === "outbox" && <Outbox items={outboxS} />}
+          {tab === "outbox" && <Outbox items={outboxS} canTest={!me} onSent={(text, ok) => setMsg({ ok, text })} />}
           {tab === "log" && <Log st={stS} />}
           {tab === "weekly" && <Weekly api={apiS} act={act} post={post} setMsg={setMsg} />}
           {tab === "quality" && <Quality api={api} />}
@@ -505,18 +504,40 @@ function Reviews({ reviews }: { reviews: Review[] }) {
 }
 
 
-function Outbox({ items }: { items: State["outbox"] }) {
+function Outbox({ items, canTest, onSent }: { items: State["outbox"]; canTest: boolean; onSent: (text: string, ok: boolean) => void }) {
   const [open, setOpen] = useState("");
+  const [to, setTo] = useState("");
+  const [sending, setSending] = useState("");
+  useEffect(() => { try { setTo(localStorage.getItem("testEmail") ?? ""); } catch {} }, []);
+  async function sendTest(id: string) {
+    setSending(id);
+    try {
+      try { localStorage.setItem("testEmail", to); } catch {}
+      const r = await fetch("/api/email/test", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ id, to }) });
+      const j = await r.json();
+      onSent(r.ok ? `Test e-mail for ${id} sent to ${to} (via Resend). The real recipients were not contacted.` : j.error ?? "Sending failed", r.ok);
+    } catch { onSent("Sending failed (network).", false); }
+    setSending("");
+  }
   return (
     <div className="card">
       <h2>Outbox (simulated)</h2>
-      <div className="sub">Work-order e-mails, urgent safety alerts, approved public replies and weekly summaries. The demo does not contact real people: addresses are test addresses.</div>
+      <div className="sub">Work-order e-mails, urgent safety alerts, approved public replies and weekly summaries. The demo does not contact real people. Open a message to send it as a test e-mail to your own address.</div>
       {items.length === 0 && <Empty title="Nothing in the outbox yet" hint="Work-order e-mails and approved replies appear here." />}
       {items.map((m) => (
         <div key={m.id} style={{ borderTop: "1px solid var(--line)", padding: "8px 0", cursor: "pointer" }} onClick={() => setOpen(open === m.id ? "" : m.id)}>
           <span className={`pill ${m.kind === "safety_escalation" ? "alert" : m.kind === "reply" ? "ok" : "none"}`}>{m.kind.replace("_", " ")}</span>{" "}
           <b>{m.subject}</b> <span className="small">→ {m.to.join(", ")} · {fmtT(m.createdAt)}</span>
-          {open === m.id && <pre style={{ whiteSpace: "pre-wrap", font: "inherit", color: "var(--text-2)", margin: "8px 0 0" }}>{m.body}</pre>}
+          {open === m.id && <>
+            <pre style={{ whiteSpace: "pre-wrap", font: "inherit", color: "var(--text-2)", margin: "8px 0 0" }}>{m.body}</pre>
+            {canTest && (
+              <div className="bar" style={{ margin: "8px 0 0" }} onClick={(e) => e.stopPropagation()}>
+                <input type="email" placeholder="test recipient e-mail" value={to} onChange={(e) => setTo(e.target.value)} style={{ padding: "4px 8px", border: "1px solid var(--line)", borderRadius: 6 }} />
+                <button className="btn sm" disabled={!to || !!sending} onClick={() => sendTest(m.id)}>{sending === m.id ? <><Spinner small /> Sending…</> : "Send test e-mail"}</button>
+                <span className="small">Goes only to this address (Resend, test only). The listed recipients are not contacted.</span>
+              </div>
+            )}
+          </>}
         </div>
       ))}
     </div>
