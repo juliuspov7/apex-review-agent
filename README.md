@@ -1,5 +1,7 @@
 # Apex guest review agent (Task 3)
 
+> Recruitment assignment prototype, independently developed for Apex Alliance Hotel Management. Not an official company system. Demo data only.
+
 A web application that reads guest reviews, understands them with an AI model, creates work orders for technical problems, drafts replies in the guest's language, and releases a reply only after the hotel's general manager (GM) approves it.
 
 - **Live:** https://apex-review-agent.vercel.app (view password is sent separately)
