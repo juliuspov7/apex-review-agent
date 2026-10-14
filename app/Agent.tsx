@@ -631,7 +631,7 @@ function Quality({ api }: { api: Api }) {
     <div className="grid">
       <div className="card">
         <h2>Classification quality</h2>
-        <div className="sub">Measured on all 100 sample reviews against reference labels (data/gold.txt) drafted with an AI assistant and not yet reviewed by a hotel specialist. Run again with <code>npm run eval</code>.</div>
+        <div className="sub">Measured on the 100 sample reviews, compared with reference labels that were prepared with an AI assistant and have not yet been reviewed by a hotel specialist.</div>
         {api.evalSummary ? <EvalTable lines={api.evalSummary.lines} /> : <p className="small">No evaluation file yet.</p>}
       </div>
       <div className="card">
