@@ -59,7 +59,7 @@ A case is escalated if **either the model or the keyword check** reports electri
 | `app/api/draft/route.ts` | A GM approves or rejects a reply. |
 | `app/api/wo/route.ts` | Start or close a work order. |
 | `app/api/weekly/route.ts` | Queues the weekly summaries for the GMs. |
-| `app/api/email/test/route.ts` | Demo: sends one Outbox message as a test e-mail through Resend to the address typed in (or only to allowed addresses, see settings). Limited to 10 send attempts per hour (failed attempts count too) and logged; the limit and a duplicate check (the same message to the same address is sent once) are reserved in the saved state before sending, and Resend gets an idempotency key. For a public demo link, list specific addresses instead of `*`. |
+| `app/api/email/test/route.ts` | Demo: sends one Outbox message as a test e-mail through Resend to the address typed in. Any address can be typed in. Limited to 30 send attempts per hour in total and 5 per address (failed attempts count too), and logged; the limit and a duplicate check (the same message to the same address is sent once) are reserved in the saved state before sending, and Resend gets an idempotency key. Optionally restrict recipients with `TEST_EMAIL_ALLOWLIST`. |
 | `app/api/export/route.ts` | Downloads the work orders as an Excel file. |
 | `app/api/reset/route.ts` | Demo helper: deletes all agent data. Needs `ADMIN_PASSWORD`. |
 | `lib/pipeline.ts` | **The workflow:** collecting, analysis results, work orders and grouping, escalation, approvals, closing rules, safe saving of the state. |
@@ -96,7 +96,7 @@ Cost: about **$0.10 per 100 reviews** with gpt-4.1-mini (assumed price $0.40 / $
 | `OPENAI_API_KEY` | Access to the AI model. |
 | `OPENAI_MODEL`, `LLM_PRICE_IN`, `LLM_PRICE_OUT` | Optional: another model and its price per million tokens. |
 | `DASH_PASSWORD` | Password to open the app. Not set = no password (local use). |
-| `RESEND_API_KEY`, `TEST_EMAIL_ALLOWLIST`, `RESEND_FROM` | Optional: the “Send test e-mail” button in the Outbox. `TEST_EMAIL_ALLOWLIST` is a comma-separated list of allowed recipients, or `*` for any address; `RESEND_FROM` must use a domain verified in Resend (the default sandbox sender delivers only to the Resend account owner). |
+| `RESEND_API_KEY`, `TEST_EMAIL_ALLOWLIST`, `RESEND_FROM` | Optional: the “Send test e-mail” button in the Outbox. `TEST_EMAIL_ALLOWLIST` is optional: a comma-separated list of allowed recipients (not set = any address); `RESEND_FROM` must use a domain verified in Resend (the default sandbox sender delivers only to the Resend account owner). |
 | `ADMIN_PASSWORD` | Password for the Reset button. |
 | `BLOB_READ_WRITE_TOKEN` | Set by connecting a **private** Vercel Blob store. Without it, data is kept in `.local-store/`. |
 

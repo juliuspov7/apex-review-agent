@@ -2,12 +2,13 @@ import { loadState, withState } from "@/lib/pipeline";
 
 export const dynamic = "force-dynamic";
 
-const MAX_PER_HOUR = 10;
+const MAX_PER_HOUR = 30;
+const MAX_PER_ADDRESS_PER_HOUR = 5;
 const MARK = "TEST E-MAIL";
 const STALE_MS = 2 * 60_000; // a "sending" entry older than this is treated as a crashed attempt
 
-/** Recipients allowed for test sends (comma separated env; "*" = any single valid address). */
-const allowed = () => (process.env.TEST_EMAIL_ALLOWLIST ?? "").split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
+/** Optional restriction (comma separated env). Not set = any valid address, so testers can type their own. */
+const allowed = () => (process.env.TEST_EMAIL_ALLOWLIST ?? "*").split(",").map((s) => s.trim().toLowerCase()).filter(Boolean);
 
 /**
  * Demo only: sends ONE outbox message to a test address through Resend. The real recipients (GM, engineer, guest)
@@ -36,6 +37,7 @@ export async function POST(req: Request) {
     const now = Date.now();
     const mine = st.log.filter((l) => l.text.startsWith(MARK));
     if (mine.filter((l) => l.text.startsWith(`${MARK} sending`) && Date.parse(l.ts) > now - 3600_000).length >= MAX_PER_HOUR) return { error: "Too many test e-mails in the last hour. Try again later.", status: 429 };
+    if (mine.filter((l) => l.text.startsWith(`${MARK} sending`) && l.text.endsWith(` to ${rcpt}`) && Date.parse(l.ts) > now - 3600_000).length >= MAX_PER_ADDRESS_PER_HOUR) return { error: "Too many test e-mails to this address in the last hour.", status: 429 };
     const last = [...mine].reverse().find((l) => l.text.endsWith(tag) || l.text.includes(`${tag} `));
     if (last) {
       const sent = last.text.startsWith(`${MARK} sent`);
