@@ -216,3 +216,10 @@ header.top .chips { flex: 1 1 auto; min-width: 0; }
 .srcbar .btn.sm.primary { background: var(--accent); }
 .srcbar .reset { margin-left: auto; color: var(--text-3); background: transparent !important; border-color: transparent; }
 .srcbar .reset:hover { color: #b3261e; border-color: var(--line); }
+
+.hotelbar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 0 0 14px; padding: 8px 12px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; }
+.hotelbar > b { font-size: 13px; color: var(--text-2); margin-right: 4px; }
+.hotelbar button { border: 1px solid var(--line); background: var(--bg); border-radius: 999px; padding: 3px 11px; font-size: 13px; cursor: pointer; }
+.hotelbar button:hover { border-color: var(--text-3); }
+.hotelbar button.on { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+.hotelbar .small { margin-left: 6px; }

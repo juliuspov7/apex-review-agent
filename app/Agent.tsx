@@ -204,13 +204,12 @@ export default function Agent() {
         </div>
         <div style={{ marginTop: 16 }}>
           {tab !== "quality" && !me && (
-            <div className="bar" style={{ marginTop: 0 }}>
-              <label>Hotel
-                <select value={hotel} onChange={(e) => setHotel(e.target.value)}>
-                  <option>All</option>
-                  {hotels.map((h) => <option key={h}>{h}</option>)}
-                </select>
-              </label>
+            <div className="hotelbar" role="group" aria-label="Hotel filter">
+              <b>Hotel</b>
+              {["All", ...hotels].map((h) => (
+                <button key={h} className={hotel === h ? "on" : ""} onClick={() => setHotel(h)}>{h}</button>
+              ))}
+              {hotel !== "All" && <span className="small">Showing only {hotel}</span>}
             </div>
           )}
           {tab === "overview" && <Overview counts={counts} pending={pending.length} openOrders={openOrders.length} openSafety={openSafety} st={stS} reviews={rv} orders={ord} setTab={setTab} empty={rv.length === 0 && counts.queued === 0} />}
