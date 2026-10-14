@@ -121,7 +121,7 @@ export default function Agent() {
       <header className="top">
         <div className="wrap">
           <div className="hdr-left">
-            <span className="wordmark">Apex</span>
+            <span className="wordmark">Apex Alliance</span>
             <h1>Guest review agent</h1>
           </div>
           <div className="chips">
