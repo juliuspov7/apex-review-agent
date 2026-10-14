@@ -33,7 +33,7 @@ const analysed = rows.filter((r) => r.analysis && r.status !== "duplicate");
 const pct = (a: number, b: number) => (b ? `${((a / b) * 100).toFixed(1)}% (${a}/${b})` : "n/a");
 const miss: string[] = [];
 
-let lang = 0, sent = 0, polarity = 0, exact = 0, tp = 0, fp = 0, fn = 0, techOk = 0;
+let exactCore = 0, lang = 0, sent = 0, polarity = 0, exact = 0, tp = 0, fp = 0, fn = 0, techOk = 0;
 let sTP = 0, sFP = 0, sFN = 0, mTP = 0, mFP = 0, mFN = 0, nTP = 0, nFP = 0, nFN = 0;
 let spTP = 0, spFP = 0, spFN = 0;
 const isTech = (c: string) => c.startsWith("Technical") || c === "Housekeeping";
@@ -47,6 +47,9 @@ for (const r of analysed) {
   const got = new Set(a.issues.map((i) => i.category));
   const inter = [...got].filter((c) => g.cats.has(c)).length;
   tp += inter; fp += got.size - inter; fn += g.cats.size - inter;
+  const core = (set: Set<string>) => new Set([...set].filter((c) => c !== "Front office / Service" && c !== "Other"));
+  const gc = core(got), rc = core(g.cats);
+  if (gc.size === rc.size && [...gc].every((c) => rc.has(c))) exactCore++;
   const same = got.size === g.cats.size && inter === got.size;
   if (same) exact++; else miss.push(`${r.id} categories: got [${[...got].join("; ")}], expected [${[...g.cats].join("; ")}]`);
   if ([...got].some(isTech) === [...g.cats].some(isTech)) techOk++;
@@ -78,6 +81,7 @@ const lines = [
   `| Sentiment exact | ${pct(sent, analysed.length)} |`,
   `| Sentiment, no positive<->negative flips | ${pct(polarity, analysed.length)} |`,
   `| Category sets exactly right | ${pct(exact, analysed.length)} |`,
+  `| …ignoring “Front office / Service” and “Other” (the technical, housekeeping and F&B routing) | ${pct(exactCore, analysed.length)} |`,
   `| Category precision / recall / F1 | ${P(tp, fp).toFixed(3)} / ${P(tp, fn).toFixed(3)} / ${f1(P(tp, fp), P(tp, fn))} |`,
   `| Technical-or-housekeeping routing correct (work order needed yes/no) | ${pct(techOk, analysed.length)} |`,
   `| Safety escalation (model OR keyword net): TP / FP / FN | ${sTP} / ${sFP} / ${sFN}  (recall ${P(sTP, sFN).toFixed(2)}, precision ${P(sTP, sFP).toFixed(2)}) |`,

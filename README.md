@@ -82,11 +82,11 @@ A case is escalated if **either the model or the keyword check** reports electri
 
 ## Quality and cost
 
-`npm run eval` processes the 100 sample reviews and compares them with the reference labels. Latest run (`eval-gpt-4.1-mini.md`): language 100 %, sentiment 88 % exactly right (no positive/negative flips), category sets 80 % exactly right, safety cases 11 of 11 found with no false alarms, spam and the cross-posted duplicate found. Results vary a little from run to run.
+`npm run eval` processes the 100 sample reviews and compares them with the reference labels. Latest run (`eval-gpt-4.1-mini.md`): language 100 %, sentiment about 93–95 % exactly right (no positive/negative flips), category sets about 86–87 % exactly right (98–99 % if the vague “Front office / Service” and “Other” categories are ignored, i.e. the technical, housekeeping and F&B routing), safety cases 11 of 11 found with no false alarms, spam and the cross-posted duplicate found. Four runs of the same prompt varied by about one or two reviews.
 
-Caveats: the reference labels were drafted with an AI assistant, and the lift rule was tightened after seeing the results on the same data, so the safety figure is optimistic. The mixed “Front office / Service” category is the least consistent.
+Caveats: the reference labels were drafted with an AI assistant. The prompt was clarified (definition of “mixed” sentiment, noise from room units versus building equipment, when “Front office / Service” applies) after looking at the disagreements on these same 100 reviews, and the lift rule was tightened the same way, so the figures are optimistic and would need a fresh set to confirm. Before the clarifications the figures were sentiment 88 %, category sets 83 %. “Front office / Service” is the least consistent category, also in the reference labels.
 
-Cost: about **$0.09 per 100 reviews** with gpt-4.1-mini (assumed price $0.40 / $1.60 per million tokens; check current pricing). For 18 hotels with an assumed 60 reviews per hotel per month, about $1 per month. Hosting is free at demo size.
+Cost: about **$0.10 per 100 reviews** with gpt-4.1-mini (assumed price $0.40 / $1.60 per million tokens; check current pricing). For 18 hotels with an assumed 60 reviews per hotel per month, about $1 per month. Hosting is free at demo size.
 
 ## Settings (environment variables)
 

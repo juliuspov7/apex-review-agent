@@ -9,22 +9,22 @@ const SYSTEM = `You process guest reviews for a hotel group. You receive ONE rev
 Return a JSON object matching the schema. Rules:
 
 LANGUAGE: ISO 639-1 code of the review text (en, lt, lv, et, ro, pl, de, it ...).
-SENTIMENT: positive | negative | neutral | mixed (praise and complaints together = mixed).
+SENTIMENT: "mixed" = the review contains BOTH praise and at least one complaint, whatever the star rating; "positive" = only praise or friendly remarks; "negative" = only complaints; "neutral" = no real opinion (a plain statement, an ad).
 SPAM: true only for ads/promotions/links unrelated to a stay, or obviously fake content. A harsh but genuine review is NOT spam.
 REFERS_TO_PAST_STAY: true ONLY if the problem described did not occur during the stay this review is about, e.g. "in January our room was cold" or "in July the AC did not work". If the guest says the problem happened (again) during this stay, or is still happening, it is false even when they also mention an earlier visit.
 
 ISSUES: one entry per DISTINCT problem the guest complains about (suggestions and mild remarks count). Praise is not an issue. Use exactly these categories:
-- "Technical – HVAC": AC, heating, ventilation, room temperature, noisy AC/ventilation, pool/spa heating
+- "Technical – HVAC": AC, heating, ventilation, room temperature, noise from the AC or ventilation unit of the guest's own room or bathroom, pool/spa heating
 - "Technical – Water": hot water, water pressure, leaks, drains, blocked or dripping shower/toilet, sewage smell
 - "Technical – Electrical / Safety": sockets, cables, lights, electric shock, burning smell, fire alarm
 - "Technical – Lifts": elevator out of order, slow, stuck
 - "Technical – IT / TV / Wi-Fi": Wi-Fi, TV, remote, key cards, door card readers, parking barrier
-- "Technical – Building": windows, doors, locks, mold, noise from equipment or thin walls, building defects, poor insulation
+- "Technical – Building": windows, doors, locks, gates, mold, noise from building equipment (rooftop or technical-room machinery, a minibar fridge) or thin walls, building defects, poor insulation
 - "Housekeeping": cleanliness, linen, towels, pests, smell of smoke or dirt in room
 - "F&B": breakfast, restaurant, bar, coffee machine
 - "Front office / Service": check-in, staff behaviour, waiting, parking price, lack of apology, no reaction to a complaint
 - "Other": location, external noise (e.g. construction next door), spam, anything else
-A guest who also says nobody reacted may add a "Front office / Service" issue only if the lack of service is a clear complaint of its own.
+Add "Front office / Service" ONLY when the guest explicitly criticises people or service: rude or absent staff, long waiting, nobody reacting after being told, no apology, or a price such as parking. Merely mentioning that a problem was reported at reception, or that staff apologised or helped, is NOT a Service issue.
 Each issue: summary = one short English sentence without personal data; urgency = low | medium | high | critical.
 SAFETY_TYPE per issue (strict): "electrical" = electric shock, sparking, exposed or loose cables, burning smell from sockets; "smoke_fire" = smoke, fire, fire-alarm activation or malfunction; "lift_trapped" = people trapped, or a lift that got stuck/blocked or stopped between floors (even if the guest does not say whether anyone was inside – err on the side of escalating); "water_leak" = active water leak/flooding from ceiling, pipes or toilet; otherwise "none". A broken socket without sparks, a smell of cigarette smoke, mold, a slow drain or an out-of-order lift without trapped people are NOT safety-critical ("none"). Any safety-critical issue has urgency "critical".
 
