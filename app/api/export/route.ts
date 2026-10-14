@@ -1,4 +1,4 @@
-import * as XLSX from "xlsx";
+import ExcelJS from "exceljs";
 import { loadState } from "@/lib/pipeline";
 
 export const dynamic = "force-dynamic";
@@ -28,11 +28,14 @@ export async function GET(req: Request) {
       "Closed by": w.closedBy ?? "",
       "Close note": w.closeNote ?? "",
     }));
-  const ws = XLSX.utils.json_to_sheet(rows);
-  ws["!cols"] = [{ wch: 11 }, { wch: 11 }, { wch: 7 }, { wch: 30 }, { wch: 12 }, { wch: 30 }, { wch: 10 }, { wch: 8 }, { wch: 22 }, { wch: 70 }, { wch: 22 }, { wch: 22 }, { wch: 26 }, { wch: 40 }];
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "Work orders");
-  const buf = XLSX.write(wb, { type: "buffer", bookType: "xlsx" }) as Buffer;
+  const wb = new ExcelJS.Workbook();
+  const ws = wb.addWorksheet("Work orders");
+  const widths = [11, 11, 7, 30, 12, 30, 10, 8, 22, 70, 22, 22, 26, 40];
+  const heads = ["Work order", "Priority", "Hotel", "Category", "Status", "Assigned to", "Rooms", "Guest reports", "Review ids", "What guests report", "Created", "Updated", "Closed by", "Close note"];
+  ws.columns = heads.map((h, i) => ({ header: h, key: h, width: widths[i] }));
+  for (const r of rows) ws.addRow(r);
+  ws.getRow(1).font = { bold: true };
+  const buf = Buffer.from(await wb.xlsx.writeBuffer());
   return new Response(new Uint8Array(buf), {
     headers: {
       "Content-Type": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
