@@ -21,6 +21,11 @@ const render = (r: Review, t: string) => t.replaceAll("{{GUEST}}", guest(r));
 const short = (c: string) => c.replace("Technical – ", "T · ");
 const fmtT = (s: string) => new Date(s).toLocaleString("en-GB", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" });
 
+async function logout() {
+  await fetch("/api/logout", { method: "POST" }).catch(() => null);
+  window.location.href = "/login";
+}
+
 export default function Agent() {
   const [api, setApi] = useState<Api | null>(null);
   const [tab, setTab] = useState<Tab>("overview");
@@ -126,6 +131,7 @@ export default function Agent() {
               {api.actors.map((a) => <option key={a.email} value={a.email}>{a.hotel} · {a.role} · {a.email}</option>)}
             </select>
           </label>
+          <button className="btn" onClick={logout} title="End this session">Log out</button>
         </div>
       </header>
       <div className="wrap">
