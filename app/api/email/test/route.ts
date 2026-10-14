@@ -28,6 +28,7 @@ export async function POST(req: Request) {
   if (!m) return Response.json({ error: "Message not found." }, { status: 404 });
 
   const tag = `${m.id} to ${rcpt}`;
+  const attempt = Date.now(); // unique per send, so the idempotency key is not reused after a demo reset
   const reserved = await withState((st) => {
     const msg = st.outbox.find((o) => o.id === id);
     if (!msg) return { error: "Message not found.", status: 404 };
@@ -52,7 +53,7 @@ export async function POST(req: Request) {
   try {
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
-      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json", "Idempotency-Key": `apex-test-${m.id}-${rcpt}` },
+      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json", "Idempotency-Key": `apex-test-${m.id}-${rcpt}-${attempt}` },
       signal: AbortSignal.timeout(20000),
       body: JSON.stringify({ from: process.env.RESEND_FROM || "Apex review agent (demo) <onboarding@resend.dev>", to: [rcpt], subject: `[TEST] ${m.subject}`, text: note + m.body }),
     });

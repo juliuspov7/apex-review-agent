@@ -59,7 +59,7 @@ A case is escalated if **either the model or the keyword check** reports electri
 | `app/api/draft/route.ts` | A GM approves or rejects a reply. |
 | `app/api/wo/route.ts` | Start or close a work order. |
 | `app/api/weekly/route.ts` | Queues the weekly summaries for the GMs. |
-| `app/api/email/test/route.ts` | Demo: sends one Outbox message as a test e-mail through Resend to the address typed in (or only to allowed addresses, see settings). Limited to 10 per hour and logged; the limit and a duplicate check (the same message to the same address is sent once) are reserved in the saved state before sending, and Resend gets an idempotency key. For a public demo link, list specific addresses instead of `*`. |
+| `app/api/email/test/route.ts` | Demo: sends one Outbox message as a test e-mail through Resend to the address typed in (or only to allowed addresses, see settings). Limited to 10 send attempts per hour (failed attempts count too) and logged; the limit and a duplicate check (the same message to the same address is sent once) are reserved in the saved state before sending, and Resend gets an idempotency key. For a public demo link, list specific addresses instead of `*`. |
 | `app/api/export/route.ts` | Downloads the work orders as an Excel file. |
 | `app/api/reset/route.ts` | Demo helper: deletes all agent data. Needs `ADMIN_PASSWORD`. |
 | `lib/pipeline.ts` | **The workflow:** collecting, analysis results, work orders and grouping, escalation, approvals, closing rules, safe saving of the state. |
