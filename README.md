@@ -121,6 +121,6 @@ npm run eval       # quality and cost on the 100 sample reviews (needs the key)
 - E-mails, Teams and public replies are simulated. Connecting Microsoft Graph, SMTP or the review platforms' APIs is the next step.
 - The identity is simulated (see above).
 - Reviews are loaded from files. A scheduled import from Booking, Google and TripAdvisor is not built.
-- All data is one JSON file in storage, protected against overwriting by a version check. This is fine for hundreds of reviews. PostgreSQL would be the next step for thousands of reviews and several approvers.
+- All data is one JSON file in storage. Every change reads the file, applies the change and saves it only if the file is unchanged since it was read (version check). If someone else saved first, the change is applied again to the newest data, with short random delays. So one save cannot silently overwrite another. Measured on the live site: 10 simultaneous updates all succeeded; with 30 simultaneous updates 26 succeeded and 4 were refused with a “busy” message, and the saved changes matched the successful ones exactly. There are no multi-record transactions. This is fine for hundreds of reviews and a few approvers; PostgreSQL would be the next step for thousands of reviews and many approvers.
 - Replies in less common languages should be checked by the GM; the fallback is English. Greetings have not been checked by native speakers.
 - If a guest mentions an earlier stay, the work order gets a “please verify” note. It is never suppressed.
