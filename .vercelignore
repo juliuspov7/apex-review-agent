@@ -1,2 +1,5 @@
+node_modules
+.next
 .local-store
 .env*
+.git

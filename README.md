@@ -71,7 +71,7 @@ A case is escalated if **either the model or the keyword check** reports electri
 | `lib/weekly.ts` | Weekly summary figures (calculated, not written by AI). |
 | `lib/store.ts` | Storage: private Vercel Blob, or a local folder. Writes are checked so two actions at the same time do not overwrite each other. |
 | `lib/types.ts` | Shared types and the category list. |
-| `data/batch_01.csv`, `data/batch_02.csv` | The sample reviews (80 and 20). |
+| `data/batch_01.csv`, `data/batch_02.csv` | The sample reviews (80 and 20). Assignment data: **not in Git** (listed in `.gitignore`), place the two files from Appendix C here; the deployed app includes them. |
 | `data/routing.json` | Who is GM, chief engineer and housekeeping for each hotel (from the Routing sheet). |
 | `data/gold.txt` | Reference labels for measuring quality. Drafted with an AI assistant, **not yet reviewed by a hotel specialist**. |
 | `data/eval.json`, `eval-gpt-4.1-mini.md` | The latest quality results, shown in the app and as a full report. |
