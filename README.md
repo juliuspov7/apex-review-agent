@@ -89,6 +89,15 @@ Caveats: the reference labels were drafted with an AI assistant. The prompt was 
 
 Cost: about **$0.10 per 100 reviews** with gpt-4.1-mini (assumed price $0.40 / $1.60 per million tokens; check current pricing). For 18 hotels with an assumed 60 reviews per hotel per month, about $1 per month. Hosting is free at demo size.
 
+## Model retirement (action needed before 14 January 2027)
+
+OpenAI has announced that GPT-4o, GPT-4o mini, GPT-4.1 and GPT-4.1 mini will be retired on **14 January 2027**, with three months' notice so that users can test replacements. This app uses `gpt-4.1-mini`, so it has to move to a newer model before that date.
+
+- **Switching:** set `OPENAI_MODEL` (and `LLM_PRICE_IN` / `LLM_PRICE_OUT` for the cost display). The model name is not hard-coded elsewhere. The `temperature` setting is only sent for `gpt-4*` models, so newer models run with their own defaults.
+- **Testing before the switch:** run `npm run eval` and `npm run stability` with the new model and compare with `eval-gpt-4.1-mini.md`. Pay most attention to the safety cases (11 of 11 so far), the “Front office / Service” category and the greeting grammar (`npm run greetings`).
+- **What stays valid only for the current model:** the quality figures and the cost estimate above were measured with `gpt-4.1-mini`. They must be measured again for the replacement.
+- **Not changed yet:** this is a demo prototype, so the model has not been replaced.
+
 ## Settings (environment variables)
 
 | Name | Purpose |
