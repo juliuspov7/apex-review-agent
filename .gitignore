@@ -45,5 +45,5 @@ next-env.d.ts
 
 .vercel
 
-# sample review data (assignment data, kept out of Git; still deployed via .vercelignore)
+# sample review data (assignment data, kept out of Git)
 /data/batch_*.csv
